@@ -1,3 +1,6 @@
+#ifndef UTILS
+#define UTILS
+
 #include <vector>
 #include <string>
 #include <cstdlib>
@@ -9,6 +12,7 @@
 #include "newmat10/newmatap.h"
 #include "newmat10/newmatio.h"
 #include "newmat10/newmatutils.h"
+
 
 using std::vector;
 using std::string;
@@ -48,3 +52,5 @@ void banner();
 
 extern Input params;
 extern Matrix coefs;
+
+#endif

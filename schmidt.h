@@ -17,30 +17,56 @@ class ActiveSpaceIterator {
 protected:
   int quantum;
   const SchmidtBasis* basis;
+  vector<vector<bool>> list;
+  vector<double> npweight;
+  vector<double> weight;
 
   friend class boost::serialization::access;
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
-    ar & quantum;
+    ar & quantum & list & weight & npweight;
   }
 public:
-  ActiveSpaceIterator(int q, const SchmidtBasis* _basis): quantum(q), basis(_basis) {}
+  ActiveSpaceIterator(int q, const SchmidtBasis* _basis);
   void set_basis(const SchmidtBasis* _basis) {
     basis = _basis;
   }
   ~ActiveSpaceIterator() {
     basis = nullptr;
   }
-  int size() {  return 0;}
+  int size() const {  return list.size();}
+  vector<bool> get_config(const int& i) const {  return std::move(list[i]);}
 };
 
 
 class ActiveSpaceIterator_Slater: public ActiveSpaceIterator {
+protected:
+  int nsize;
+  int na, nb; // number of alpha and beta electrons
+  void build_iterator();
+
+  friend class boost::serialization::access;
+  template<class Archive> void serialize(Archive & ar, const unsigned int version) {
+    ar & boost::serialization::base_object<ActiveSpaceIterator>(*this);
+    ar & na & nb & nsize;
+  }
 public:
-  ActiveSpaceIterator_Slater(int q, const SchmidtBasis* _basis): ActiveSpaceIterator(q, _basis) {}
+  ActiveSpaceIterator_Slater(int q, const SchmidtBasis* _basis);
 };
+
+
 class ActiveSpaceIterator_BCS: public ActiveSpaceIterator {
+protected:
+  int nsize;
+  int nqp; // number of quasiparticle excitations
+  void build_iterator();
+
+  friend class boost::serialization::access;
+  template<class Archive> void serialize(Archive & ar, const unsigned int version) {
+    ar & boost::serialization::base_object<ActiveSpaceIterator>(*this);
+    ar & nqp & nsize;
+  }
 public:
-  ActiveSpaceIterator_BCS(int q, const SchmidtBasis* _basis): ActiveSpaceIterator(q, _basis) {}
+  ActiveSpaceIterator_BCS(int q, const SchmidtBasis* _basis);
 };
 
 
@@ -85,15 +111,15 @@ public:
 
   int nactive() const {  return m_na;};
 
-  // the largest weight in a given configuration, 
-  // n active sites in left block occupied (nactive-n in right block)
-  double lweight_bound(int n) const;
+  vector<double> lweight() const {
+    return std::move(m_lweight);
+  }
 
   friend std::ostream& operator << (std::ostream& os, const SchmidtBasis& basis);
 
   // compute possible quantum numbers, for left basis,
   // if use for right basis, just add a minus sign
-  virtual void calc_q() = 0;                     
+  virtual void calc_q() = 0;
   void calc_dim();
 
   std::shared_ptr<ActiveSpaceIterator> iterator(int q); // spin of left block, use -q if with right block

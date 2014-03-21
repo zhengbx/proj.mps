@@ -17,7 +17,7 @@ public:
   DensityMatrix(Matrix& coefs) {
     m_coefs = std::move(coefs);
   }
-  virtual std::shared_ptr<SchmidtBasis> basis(int cut) const = 0;
+  virtual boost::shared_ptr<SchmidtBasis> basis(int cut) const = 0;
   virtual int get_nsites() const = 0;
   virtual int get_norbs() const = 0;
 };
@@ -35,7 +35,7 @@ protected:
 public:
   SlaterDM(Matrix& coefs): DensityMatrix(coefs), 
       nsites(m_coefs.Nrows()), norbs(m_coefs.Ncols()) {};
-  std::shared_ptr<SchmidtBasis> basis(int cut) const;
+  boost::shared_ptr<SchmidtBasis> basis(int cut) const;
   int get_nsites() const {  return nsites;};
   int get_norbs() const {  return norbs;};
 };
@@ -52,7 +52,7 @@ protected:
   }
 public:
   BCSDM(Matrix& coefs): DensityMatrix(coefs), nsites(coefs.Ncols()) {}
-  std::shared_ptr<SchmidtBasis> basis(int cut) const;
+  boost::shared_ptr<SchmidtBasis> basis(int cut) const;
   int get_nsites() const {  return nsites;};
   int get_norbs() const {  return nsites;};
 

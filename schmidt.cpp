@@ -104,10 +104,9 @@ map<vector<bool>, double> combinations(const vector<double>& w, int n, double th
   }
 }
 
-ActiveSpaceIterator::ActiveSpaceIterator(int q, const SchmidtBasis* _basis): quantum(q), basis(_basis), weight(_basis -> lweight()) {}
+ActiveSpaceIterator::ActiveSpaceIterator(int q, const SchmidtBasis* _basis): quantum(q), basis(_basis), weight(_basis -> lweight()), nsize(_basis -> nactive()) {}
 
 ActiveSpaceIterator_Slater::ActiveSpaceIterator_Slater(int q, const SchmidtBasis* _basis): ActiveSpaceIterator(q, _basis) {
-  nsize = basis -> nactive();
   int ntotal = basis -> lsites() - basis -> nlcore() * 2;
   na = (ntotal + q) / 2;
   nb = (ntotal - q) / 2;
@@ -115,7 +114,6 @@ ActiveSpaceIterator_Slater::ActiveSpaceIterator_Slater(int q, const SchmidtBasis
 }
 
 ActiveSpaceIterator_BCS::ActiveSpaceIterator_BCS(int q, const SchmidtBasis* _basis): ActiveSpaceIterator(q, _basis) {
-  nsize = basis -> nactive();
   nqp = q - basis -> nlcore() + basis -> lsites(); // nqp + ncore - nsites = q
   build_iterator();  
 }
@@ -190,13 +188,13 @@ void SchmidtBasis::calc_dim() {
   }
 }
 
-std::shared_ptr<ActiveSpaceIterator> SchmidtBasis::iterator(int q) {
+boost::shared_ptr<ActiveSpaceIterator> SchmidtBasis::iterator(int q) {
   auto it = m_it.find(q);
   if (it == m_it.end()) {
     auto ptr_asi = params.bcs ? 
-      std::shared_ptr<ActiveSpaceIterator>(new ActiveSpaceIterator_BCS(q, this)):
-      std::shared_ptr<ActiveSpaceIterator>(new ActiveSpaceIterator_Slater(q, this));
-    m_it.insert(std::pair<int, std::shared_ptr<ActiveSpaceIterator>>(q, ptr_asi));
+      boost::shared_ptr<ActiveSpaceIterator>(new ActiveSpaceIterator_BCS(q, this)):
+      boost::shared_ptr<ActiveSpaceIterator>(new ActiveSpaceIterator_Slater(q, this));
+    m_it.insert(std::pair<int, boost::shared_ptr<ActiveSpaceIterator>>(q, ptr_asi));
   }
   return m_it[q];
 }

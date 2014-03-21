@@ -1,6 +1,6 @@
 #include "densitymat.h"
 
-std::shared_ptr<SchmidtBasis> SlaterDM::basis(int cut) const {
+boost::shared_ptr<SchmidtBasis> SlaterDM::basis(int cut) const {
   Matrix la(cut, 0), lc(cut, 0); // active orbitals
   Matrix ra(nsites-cut, 0), rc(nsites-cut, 0); // core orbitals
   vector<double> lweight; // this is the square of natural orbital norm
@@ -44,10 +44,10 @@ std::shared_ptr<SchmidtBasis> SlaterDM::basis(int cut) const {
       }
     }
   }
-  return std::shared_ptr<SchmidtBasis>(new SchmidtBasis_Slater(lc, rc, la, ra, lweight));
+  return boost::shared_ptr<SchmidtBasis>(new SchmidtBasis_Slater(lc, rc, la, ra, lweight));
 }
 
-std::shared_ptr<SchmidtBasis> BCSDM::basis(int cut) const {
+boost::shared_ptr<SchmidtBasis> BCSDM::basis(int cut) const {
   Matrix la(cut*2, 0), lc(cut*2, 0); // active orbitals
   Matrix ra((nsites-cut)*2, 0), rc((nsites-cut)*2, 0); // core orbitals
   vector<double> lweight; // this is the square of natural orbital norm
@@ -91,6 +91,6 @@ std::shared_ptr<SchmidtBasis> BCSDM::basis(int cut) const {
       }
     }
   }
-  return std::shared_ptr<SchmidtBasis>(new SchmidtBasis_BCS(lc, rc, la, ra, lweight));
+  return boost::shared_ptr<SchmidtBasis>(new SchmidtBasis_BCS(lc, rc, la, ra, lweight));
 }
 

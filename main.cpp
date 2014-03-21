@@ -36,15 +36,23 @@ int main(int argc, char* argv[]){
   }
   
   auto dm = params.bcs ? 
-    std::shared_ptr<DensityMatrix>(new BCSDM(coefs)) : 
-    std::shared_ptr<DensityMatrix>(new SlaterDM(coefs));
+    boost::shared_ptr<DensityMatrix>(new BCSDM(coefs)) : 
+    boost::shared_ptr<DensityMatrix>(new SlaterDM(coefs));
   int nsites = dm -> get_nsites();
-  vector<std::shared_ptr<SchmidtBasis>> basis_set(nsites, nullptr);
+  vector<boost::shared_ptr<SchmidtBasis>> basis_set(nsites, nullptr);
 
   for (int i = 0; i < nsites; ++i) {
-    cout << "Cut = " << i << endl;
-    basis_set[i] = dm -> basis(i);
-    cout << *basis_set[i] << endl;
+    if (i % world.size() == world.rank()) {
+      cout << "Cut = " << i << " On processor " << world.rank() << endl;
+      basis_set[i] = dm -> basis(i);
+    }
+  }
+
+  for (int i = 0; i < nsites; ++i) {
+    broadcast(world, basis_set[i], i % world.size());
+    if (world.rank() == 0) {
+      cout << *basis_set[i] << endl;
+    }   
   }
 
   return 0;

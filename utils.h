@@ -7,6 +7,7 @@
 #include <iostream>
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/string.hpp>
+#include <boost/shared_ptr.hpp>
 
 #define BOOST_NO_CXX11_SCOPED_ENUMS
 #include "newmat10/newmatap.h"

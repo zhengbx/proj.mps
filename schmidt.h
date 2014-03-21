@@ -15,15 +15,16 @@ class SchmidtBasis;
 
 class ActiveSpaceIterator {
 protected:
-  int quantum;
+  int quantum, nsize;
   const SchmidtBasis* basis;
   vector<vector<bool>> list;
   vector<double> npweight;
   vector<double> weight;
 
   friend class boost::serialization::access;
+  ActiveSpaceIterator() {}  
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
-    ar & quantum & list & weight & npweight;
+    ar & quantum & nsize & list & weight & npweight;
   }
 public:
   ActiveSpaceIterator(int q, const SchmidtBasis* _basis);
@@ -37,17 +38,16 @@ public:
   vector<bool> get_config(const int& i) const {  return std::move(list[i]);}
 };
 
-
 class ActiveSpaceIterator_Slater: public ActiveSpaceIterator {
 protected:
-  int nsize;
   int na, nb; // number of alpha and beta electrons
   void build_iterator();
 
   friend class boost::serialization::access;
+  ActiveSpaceIterator_Slater() {}  
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
     ar & boost::serialization::base_object<ActiveSpaceIterator>(*this);
-    ar & na & nb & nsize;
+    ar & na & nb;
   }
 public:
   ActiveSpaceIterator_Slater(int q, const SchmidtBasis* _basis);
@@ -56,14 +56,14 @@ public:
 
 class ActiveSpaceIterator_BCS: public ActiveSpaceIterator {
 protected:
-  int nsize;
   int nqp; // number of quasiparticle excitations
   void build_iterator();
 
   friend class boost::serialization::access;
+  ActiveSpaceIterator_BCS() {}  
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
     ar & boost::serialization::base_object<ActiveSpaceIterator>(*this);
-    ar & nqp & nsize;
+    ar & nqp;
   }
 public:
   ActiveSpaceIterator_BCS(int q, const SchmidtBasis* _basis);
@@ -77,16 +77,17 @@ protected:
   Matrix m_lc, m_rc, m_la, m_ra;
   vector<double> m_lweight, m_rweight;
   vector<int> quantums, dims;
-  map<int, std::shared_ptr<ActiveSpaceIterator>> m_it;
+  map<int, boost::shared_ptr<ActiveSpaceIterator>> m_it;
 
   friend class boost::serialization::access;
+  SchmidtBasis() {}  
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
     ar & m_nlc & m_nrc & m_na & m_lsites & m_rsites;
     ar & m_lc & m_rc & m_la & m_ra & quantums & dims;
     ar & m_lweight & m_rweight;
 
-    ar.register_type(static_cast<std::shared_ptr<ActiveSpaceIterator_Slater>>(nullptr));
-    ar.register_type(static_cast<std::shared_ptr<ActiveSpaceIterator_BCS>>(nullptr));
+    ar.register_type(static_cast<ActiveSpaceIterator_Slater*>(nullptr));
+    ar.register_type(static_cast<ActiveSpaceIterator_BCS*>(nullptr));
     ar & m_it;
     for (auto iter = m_it.begin(); iter != m_it.end(); ++iter) {
       iter -> second -> set_basis(this);
@@ -122,13 +123,13 @@ public:
   virtual void calc_q() = 0;
   void calc_dim();
 
-  std::shared_ptr<ActiveSpaceIterator> iterator(int q); // spin of left block, use -q if with right block
+  boost::shared_ptr<ActiveSpaceIterator> iterator(int q); // spin of left block, use -q if with right block
 };
 
 class SchmidtBasis_Slater: public SchmidtBasis {
 protected:
-
   friend class boost::serialization::access;
+  SchmidtBasis_Slater() {}    
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
     ar & boost::serialization::base_object<SchmidtBasis>(*this);
   }
@@ -146,8 +147,8 @@ public:
 
 class SchmidtBasis_BCS: public SchmidtBasis {
 protected:
-
   friend class boost::serialization::access;
+  SchmidtBasis_BCS() {}    
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
     ar & boost::serialization::base_object<SchmidtBasis>(*this);
   }
@@ -163,5 +164,15 @@ public:
   void calc_q();
 };
 
+namespace boost { 
+namespace serialization {
+template <class Archive> void serialize(Archive & ar, boost::shared_ptr<SchmidtBasis>& t, const unsigned int file_version) {
+  ar.register_type(static_cast<SchmidtBasis_Slater*>(nullptr));
+  ar.register_type(static_cast<SchmidtBasis_BCS*>(nullptr));
+  BOOST_STATIC_ASSERT(boost::serialization::tracking_level<SchmidtBasis>::value != boost::serialization::track_never);
+  boost::serialization::split_free(ar, t, file_version);
+}
+}
+}
 
 #endif

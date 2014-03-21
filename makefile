@@ -8,7 +8,7 @@
 #   Sources for all modules
 # -----------------------------------------------------------------------------
 BINNAME = proj_mps.x
-CPPSRC	= main.cpp utils.cpp densitymat.cpp SpinHamiltonian.cpp schmidt.cpp
+CPPSRC	= main.cpp utils.cpp densitymat.cpp SpinHamiltonian.cpp schmidt.cpp mps_gen.cpp timer.cpp
 
 
 OBJ	= $(CPPSRC:.cpp=.o)

@@ -92,7 +92,9 @@ int main(int argc, char* argv[]){
   MPS<Quantum> A(nsites);
   for (int i = 0; i < nsites; ++i) {
     if (i % world.size() == world.rank()) {
+      printf("Site %3d On processor %2d", i, world.rank());
       A[i] = generate_mps(basis_set[i], basis_set[i+1], i == nsites/2);
+      cout << A[i] << endl;
     }
   }
   return 0;

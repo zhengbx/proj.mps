@@ -79,6 +79,12 @@ protected:
   vector<int> quantums, dims;
   map<int, boost::shared_ptr<ActiveSpaceIterator>> m_it;
 
+  
+  // compute possible quantum numbers, for left basis,
+  // if use for right basis, just add a minus sign
+  virtual void calc_q() = 0;
+  void calc_dim();
+
   friend class boost::serialization::access;
   SchmidtBasis() {}  
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
@@ -112,17 +118,14 @@ public:
 
   int nactive() const {  return m_na;};
 
+  const vector<int> get_q() const {  return std::move(quantums);}
+  const vector<int> get_d() const {  return std::move(dims);}
+
   vector<double> lweight() const {
     return std::move(m_lweight);
   }
 
   friend std::ostream& operator << (std::ostream& os, const SchmidtBasis& basis);
-
-  // compute possible quantum numbers, for left basis,
-  // if use for right basis, just add a minus sign
-  virtual void calc_q() = 0;
-  void calc_dim();
-
   boost::shared_ptr<ActiveSpaceIterator> iterator(int q); // spin of left block, use -q if with right block
 };
 

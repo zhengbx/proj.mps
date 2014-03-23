@@ -5,7 +5,8 @@
 namespace mpi = boost::mpi;
 
 #include "densitymat.h"
-#include "mps_gen.h"
+#include "schedule.h"
+
 
 using std::cout;
 using std::endl;
@@ -19,7 +20,11 @@ int main(int argc, char* argv[]){
     abort();
   }
   
-  mpi::communicator world;  
+  mpi::communicator world;
+  if (world.size() < 2) {
+    cout << "This program runs with at least 2 cores" << endl;
+    abort();
+  }
   if (world.rank() == 0) {
     banner();
     params.path = string(argv[1]);
@@ -72,17 +77,27 @@ int main(int argc, char* argv[]){
     world.send(0, world.rank(), t_basis.time());
   }
 
-  Timer t_send("Broadcast Basis");
+  Timer t_send("Gathering Basis");
   if (world.rank() == 0) {
     t_send.start();
   }
 
-  for (int i = 0; i < nsites+1; ++i) {
-    broadcast(world, basis_set[i], i % world.size());
-    if (world.rank() == 0) {
-      cout << *basis_set[i] << endl;
+  if (world.rank() == 0) {
+    for (int i = 0; i < nsites+1; ++i) {
+      if (i % world.size() != 0) {
+        world.recv(i % world.size(), i, basis_set[i]);
+        cout << *basis_set[i] << endl;        
+      }
+    }
+  } else {
+    for (int i = 0; i < nsites+1; ++i) {
+      if (i % world.size() == world.rank()) {
+        world.send(0, i, basis_set[i]);
+        basis_set[i].reset();
+      }
     }
   }
+
   if (world.rank() == 0) {
     t_send.pause();
     t_send.print();
@@ -90,12 +105,7 @@ int main(int argc, char* argv[]){
   }
 
   MPS<Quantum> A(nsites);
-  for (int i = 0; i < nsites; ++i) {
-    if (i % world.size() == world.rank()) {
-      printf("Site %3d On processor %2d", i, world.rank());
-      A[i] = generate_mps(basis_set[i], basis_set[i+1], i == nsites/2);
-      cout << A[i] << endl;
-    }
-  }
+
+  dynamic_build(A, basis_set);
   return 0;
 }

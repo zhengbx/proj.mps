@@ -21,13 +21,44 @@ QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::sha
     qshapes[1].push_back(Quantum(qp[i]));
     dshapes[1].push_back(dp[i]);
   }
-
-  if (s1 -> nlcore() > s1 -> nrcore()) {
-    cout << " Using Right Block" << endl;
-  } else {
-    cout << " Using  Left Block" << endl;
+  
+  A.resize(Quantum::zero(), qshapes, dshapes, false); // do not allocate
+  bool use_left = s1 -> nlcore() < s1 -> nrcore();
+  cout << (use_left ? " Using  Left Block" : " Using Right Block") << endl;
+  // now fill in the blocks
+  size_t nelements = 0;
+  for (int i = 0; i < ql.size(); ++i) {
+    for (int j = 0; j < qp.size(); ++j) {
+      for (int k = 0; k < qr.size(); ++k) {
+        if (ql[i] + qp[j] == qr[k]) {
+          IVector<3> idx = {i,j,k};
+          A.reserve(idx);
+          DArray<3> dense;
+          dense.reference(*(A.find(idx) -> second));
+          nelements += dense.size();          
+          //compute_dense(dense, ql[i], j, qr[k], s1, s2, use_left);
+        }
+      }
+    }
   }
+
+  cout << "Number of Elements " << nelements << "  Total memory " << (double)nelements / 1024 / 1024 / 1024 * 8 << " GB" << endl;
+
   if (additional) {}
   return std::move(A);
 }
 
+void compute_dense(DArray<3> d, int ql, int idx_p, int qr, boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, bool use_left) {
+  // build overlap matrix
+  
+  auto it_l = sl -> iterator(ql); // ptr to active space iterator
+  auto it_r = sr -> iterator(qr);
+  
+  for (int i = 0; i < d.shape(0); ++i) {
+    vector<bool> c1 = it_l -> get_config(i, use_left);
+    for (int j = 0; j < d.shape(2); ++j) {
+      vector<bool> c2 = it_r -> get_config(j, use_left);
+      //d(i, idx_p, j) = overlap(c1, c2);
+    }
+  }
+}

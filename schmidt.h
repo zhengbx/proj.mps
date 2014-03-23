@@ -17,14 +17,14 @@ class ActiveSpaceIterator {
 protected:
   int quantum, nsize;
   const SchmidtBasis* basis;
-  vector<vector<bool>> list;
+  vector<vector<bool>> l_list, r_list;
   vector<double> npweight;
   vector<double> weight;
 
   friend class boost::serialization::access;
   ActiveSpaceIterator() {}  
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
-    ar & quantum & nsize & list & weight & npweight;
+    ar & quantum & nsize & l_list & r_list & weight & npweight;
   }
 public:
   ActiveSpaceIterator(int q, const SchmidtBasis* _basis);
@@ -34,8 +34,10 @@ public:
   ~ActiveSpaceIterator() {
     basis = nullptr;
   }
-  int size() const {  return list.size();}
-  vector<bool> get_config(const int& i) const {  return std::move(list[i]);}
+  int size() const {  return l_list.size();}
+  vector<bool> get_config(const int& i, bool left = true) const {  
+    return std::move(left ? l_list[i]: r_list[i]);
+  }
 };
 
 class ActiveSpaceIterator_Slater: public ActiveSpaceIterator {
@@ -178,4 +180,5 @@ template <class Archive> void serialize(Archive & ar, boost::shared_ptr<SchmidtB
 }
 }
 
+std::ostream& operator << (std::ostream& os, const vector<bool>& bits);
 #endif

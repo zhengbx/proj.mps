@@ -1,6 +1,14 @@
 #include "schmidt.h"
 #include <algorithm>
 
+vector<bool> complimentary(const vector<bool>& bits) {
+  vector<bool> c(bits.size());
+  for (int i = 0; i < bits.size(); ++i) {
+    c[i] = (!bits[i]);
+  }
+  return std::move(c);
+}
+
 size_t choose(int iN, int iR){
   if (iR < 0 || iR > iN) {
       return 0;
@@ -127,7 +135,8 @@ void ActiveSpaceIterator_Slater::build_iterator() {
       if (it1->second * it2->second > params.thrnp) {
         vector<bool> merge = it1->first;
         merge.insert(merge.end(), it2->first.begin(), it2->first.end());
-        list.push_back(merge);
+        l_list.push_back(merge);
+        r_list.push_back(complimentary(merge));
         npweight.push_back(it1->second * it2->second);
       }
     }
@@ -136,11 +145,13 @@ void ActiveSpaceIterator_Slater::build_iterator() {
 
 void ActiveSpaceIterator_BCS::build_iterator() {
   auto wtable = combinations(weight, nqp, params.thrnp);
-  list.resize(wtable.size());
+  l_list.resize(wtable.size());
+  r_list.resize(wtable.size());
   npweight.resize(wtable.size());
   int count = 0;
   for (auto it = wtable.begin(); it != wtable.end(); ++it) {
-    list[count] = it->first;
+    l_list[count] = it->first;
+    r_list[count] = complimentary(it->first);
     npweight[count] = it->second;
     ++count;
   }
@@ -197,4 +208,10 @@ boost::shared_ptr<ActiveSpaceIterator> SchmidtBasis::iterator(int q) {
     m_it.insert(std::pair<int, boost::shared_ptr<ActiveSpaceIterator>>(q, ptr_asi));
   }
   return m_it[q];
+}
+
+std::ostream& operator << (std::ostream& os, const vector<bool>& bits) {
+  for (int i = 0; i < bits.size(); ++i) {
+    cout << (bits[i] ? 1 : 0);
+  }
 }

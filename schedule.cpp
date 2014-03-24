@@ -1,7 +1,7 @@
 #include "schedule.h"
 
-void dynamic_build(MPS<Quantum>& A, vector<boost::shared_ptr<SchmidtBasis>> basis) {
-  int nsites = A.size();
+void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
+  int nsites = basis.size()-1;
   mpi::communicator world;  
   if (world.rank() == 0) {
     for (int i = 0; i < nsites; ++i) {
@@ -23,9 +23,10 @@ void dynamic_build(MPS<Quantum>& A, vector<boost::shared_ptr<SchmidtBasis>> basi
     while (do_site != -1) {
       world.recv(0, do_site, basis[do_site]);
       world.recv(0, do_site+1, basis[do_site+1]);
-      printf("Worker: Generating MPS of Site %3d On processor %2d", do_site, world.rank());      
-      A[do_site] = generate_mps(basis[do_site], basis[do_site+1], do_site == nsites/2);
-      A[do_site].clear();
+      printf("Started : Generating MPS of Site %3d On processor %2d\n", do_site, world.rank());
+      QSDArray<3, Quantum> A = generate_mps(basis[do_site], basis[do_site+1], do_site == nsites/2);
+      A.clear();
+      printf("Finished: Generating MPS of Site %3d On processor %2d\n", do_site, world.rank());
       basis[do_site].reset();
       basis[do_site+1].reset();
       world.send(0, nsites+1, world.rank());
@@ -34,14 +35,14 @@ void dynamic_build(MPS<Quantum>& A, vector<boost::shared_ptr<SchmidtBasis>> basi
   }
 }
 
-void static_build(MPS<Quantum>& A, vector<boost::shared_ptr<SchmidtBasis>> basis) {
-  int nsites = A.size();
+void static_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
+  int nsites = basis.size()-1;
   mpi::communicator world;  
   for (int i = 0; i < nsites; ++i) {
     if (i % world.size() == world.rank()) {
       printf("Generating MPS of Site %3d On processor %2d", i, world.rank());
-      A[i] = generate_mps(basis[i], basis[i+1], i == nsites/2);
-      A[i].clear();
+      QSDArray<3, Quantum> A = generate_mps(basis[i], basis[i+1], i == nsites/2);
+      A.clear();
     }
   }
 }

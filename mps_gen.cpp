@@ -1,9 +1,8 @@
 #include "mps_gen.h"
 
 QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::shared_ptr<SchmidtBasis> s2, bool additional) {
-  QSDArray<3, Quantum> A;
-  
   // assign quantums
+  QSDArray<3, Quantum> A;
   TVector<Qshapes<Quantum>, 3> qshapes;
   TVector<Dshapes, 3> dshapes;
   vector<int> ql(s1->get_q()), qr(s2->get_q()), dl(s1->get_d()), dr(s2->get_d()), qp, dp;
@@ -24,7 +23,7 @@ QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::sha
   
   A.resize(Quantum::zero(), qshapes, dshapes, false); // do not allocate
   bool use_left = s1 -> nlcore() < s1 -> nrcore();
-  cout << (use_left ? " Using  Left Block" : " Using Right Block") << endl;
+  //cout << (use_left ? " Using  Left Block" : " Using Right Block") << endl;
   // now fill in the blocks
   size_t nelements = 0;
   for (int i = 0; i < ql.size(); ++i) {
@@ -42,10 +41,10 @@ QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::sha
     }
   }
 
-  cout << "Number of Elements " << nelements << "  Total memory " << (double)nelements / 1024 / 1024 / 1024 * 8 << " GB" << endl;
+  cout << "Site " << s1 -> lsites() <<  " Number of Elements " << nelements << "  Total memory " << (double)nelements / 1024 / 1024 / 1024 * 8 << " GB" << endl;
 
   if (additional) {}
-  return std::move(A);
+  return A;
 }
 
 void compute_dense(DArray<3> d, int ql, int idx_p, int qr, boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, bool use_left) {

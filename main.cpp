@@ -106,6 +106,6 @@ int main(int argc, char* argv[]){
 
   MPS<Quantum> A(nsites);
 
-  dynamic_build(A, basis_set);
+  dynamic_build(basis_set);
   return 0;
 }

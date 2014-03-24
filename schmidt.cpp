@@ -6,7 +6,7 @@ vector<bool> complimentary(const vector<bool>& bits) {
   for (int i = 0; i < bits.size(); ++i) {
     c[i] = (!bits[i]);
   }
-  return std::move(c);
+  return c;
 }
 
 size_t choose(int iN, int iR){
@@ -23,7 +23,7 @@ size_t choose(int iN, int iR){
       iComb *= iN - i + 1;
       iComb /= i;
   }
-  return std::move(iComb);
+  return iComb;
 }
 
 vector<bool> idx2bit(size_t idx, int nsize, int nocc) {
@@ -34,7 +34,7 @@ vector<bool> idx2bit(size_t idx, int nsize, int nocc) {
       idx -= choose(nsize-1-i, nocc--);
     }
   }
-  return std::move(bit);
+  return bit;
 }
 
 size_t bit2idx(const vector<bool>& bit) {
@@ -45,7 +45,7 @@ size_t bit2idx(const vector<bool>& bit) {
       idx += choose(i, ++occ);
     }
   }
-  return std::move(idx);
+  return idx;
 }
 
 double weight_bound(const vector<double>& w, int n) {
@@ -74,17 +74,17 @@ map<vector<bool>, double> simple_combinations(const vector<double>& w, int n, do
       wtable.insert(std::pair<vector<bool>, double>(bits, weight));
     }
   }
-  return std::move(wtable);
+  return wtable;
 }
 
 map<vector<bool>, double> combinations(const vector<double>& w, int n, double thr) {
   if (weight_bound(w, n) < thr) {
     map<vector<bool>, double> wtable;
-    return std::move(wtable);
+    return wtable;
   }
   
   if (choose(w.size(), n) < 10000) {
-    return std::move(simple_combinations(w, n, thr));
+    return simple_combinations(w, n, thr);
   } else { // if too big, use recursion method to compute
     vector<double> w1, w2;
     map<vector<bool>, double> wtable;    
@@ -108,7 +108,7 @@ map<vector<bool>, double> combinations(const vector<double>& w, int n, double th
         }
       }
     }
-    return std::move(wtable);
+    return wtable;
   }
 }
 

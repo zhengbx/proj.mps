@@ -111,7 +111,7 @@ Matrix read_orbitals(string file) {
     }
   }
   permute(orbs, order);
-  return std::move(orbs);
+  return orbs;
 }
 
 string mktmpdir(const string& prefix) {

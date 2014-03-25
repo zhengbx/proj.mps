@@ -120,6 +120,11 @@ public:
 
   int nactive() const {  return m_na;};
 
+  Matrix lcore() const {  return std::move(m_lc);};
+  Matrix rcore() const {  return std::move(m_rc);};
+  Matrix lactive() const {  return std::move(m_la);};
+  Matrix ractive() const {  return std::move(m_ra);};
+
   const vector<int> get_q() const {  return std::move(quantums);}
   const vector<int> get_d() const {  return std::move(dims);}
 

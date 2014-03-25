@@ -40,9 +40,9 @@ CC = mpicc
 # -----------------------------------------------------------------------------
 #   Compiler & Linker flags
 # -----------------------------------------------------------------------------
-CFLAGS	= $(INCLUDE) -O3 -std=c++11 -D_HAS_CBLAS -D_HAS_INTEL_MKL
+CFLAGS	= $(INCLUDE) -O3 -std=c++11 -D_HAS_CBLAS -D_HAS_INTEL_MKL -fopenmp
 
-LDFLAGS	= -O3 -std=c++11
+LDFLAGS	= -O3 -std=c++11 -fopenmp
 
 # =============================================================================
 #   Targets & Rules

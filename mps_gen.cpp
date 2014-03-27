@@ -62,7 +62,7 @@ void compute_dense(DArray<3>& d, int ql, int idx_p, int qr, boost::shared_ptr<Sc
     overlap_calculator = boost::shared_ptr<Overlap>(new Overlap_BCS_Right(sl, sr, ql, qr));
   } else if (!params.bcs && use_left) {
     overlap_calculator = boost::shared_ptr<Overlap>(new Overlap_Slater_Left(sl, sr, ql, qr));
-  } else if (!params.bcs && !use_left) {
+  } else {
     overlap_calculator = boost::shared_ptr<Overlap>(new Overlap_Slater_Right(sl, sr, ql, qr));
   }
   
@@ -153,6 +153,7 @@ int individual_parity(const vector<bool>& bits) {
       while (pos < la.size() && ra[i] > la[pos]) ++pos;
       noi += la.size() - pos;
     }
+    pos = 0;
     for (int i = 0; i < rb.size(); ++i) {
       while (pos < lb.size() && rb[i] > lb[pos]) ++pos;
       noi += lb.size() - pos;
@@ -230,8 +231,8 @@ void Overlap_Slater_Left::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boo
 }
 
 void Overlap_Slater_Right::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr) {
-  assert(total_a == lactive_a + lcore + 1 || total_b == lactive_b + lcore + 1);
-  if (total_a - lactive_a > total_b - lactive_b) { // the state on this site is up
+  assert(total_a == ractive_a + rcore + 1 || total_b == ractive_b + rcore + 1);
+  if (total_a - ractive_a > total_b - ractive_b) { // the state on this site is up
     this_site_up = true;
     parity = 1;
     work_a.SubMatrix(1, 1, 1, lcore) = sl -> rcore().Row(1);
@@ -267,7 +268,6 @@ void Overlap_Slater_Left::build_ac_block(const vector<bool>& c1, const vector<bo
       }
     }
   }
-
   if (lactive_b) { // ac block in beta spin
     int shift = this_site_up ? lcore+1:lcore+2, count = 0;
     for (int i = 0; i < lactive_size; ++i) { // for beta spin
@@ -289,7 +289,6 @@ void Overlap_Slater_Right::build_ac_block(const vector<bool>& c1, const vector<b
       }
     }
   }
-
   if (ractive_b) { // ac block of spin beta
     int shift = this_site_up ? rcore+1:rcore+2, count = 0;
     for (int i = 0; i < ractive_size; ++i) {
@@ -299,6 +298,7 @@ void Overlap_Slater_Right::build_ac_block(const vector<bool>& c1, const vector<b
       }
     }
   }
+
 }
 
 void Overlap_Slater_Left::build_ca_block(const vector<bool>& c1, const vector<bool>& c2) {
@@ -347,7 +347,6 @@ void Overlap_Slater_Right::build_ca_block(const vector<bool>& c1, const vector<b
       }
     }
   }
-
   if (lactive_b) {
     int count = 0;
     for (int i = 0; i < lactive_size; ++i) {
@@ -414,7 +413,6 @@ void Overlap_Slater_Right::build_aa_block(const vector<bool>& c1, const vector<b
       }
     }
   }
-
   if (lactive_b && ractive_b) {
     int shift = this_site_up ? rcore+1 : rcore+2, count_r = 0;
     for (int i = 0; i < ractive_size; ++i) {

@@ -1,6 +1,9 @@
 #include <iostream>
 #include <boost/mpi.hpp>
+#define BOOST_NO_CXX11_SCOPED_ENUMS
+#include <boost/filesystem.hpp>
 #include "timer.h"
+#include "mps_op.h"
 
 namespace mpi = boost::mpi;
 
@@ -104,8 +107,30 @@ int main(int argc, char* argv[]){
     cout << endl;
   }
 
-  MPS<Quantum> A(nsites);
-
   dynamic_build(basis_set);
+  world.barrier();
+
+  if (world.rank() == 0) {
+    MPS<Quantum> A(nsites);
+    compress_on_disk(A, MPS_DIRECTION::Right, params.M, params.temp.c_str(), true);
+    if (params.calc_spectra) {
+      cout << "\nnow calculate entanglement entropy\n";
+      auto raw_spectra = Schmidt_on_disk(A, -1, params.temp.c_str());
+      spectra(raw_spectra);
+    }
+    boost::filesystem::path mps_tmp_store(params.temp);  
+    if (params.savemps) {
+      boost::filesystem::path mps_store(params.path + "/mps.out");
+      boost::filesystem::create_directory(mps_store);
+      for (int i = 0; i < nsites; ++i) {
+        string filename = std::to_string(i) + ".mps";
+        boost::filesystem::path p1(params.temp + "/" + filename);
+        boost::filesystem::path p2(params.path + "/mps.out/" + filename);
+        boost::filesystem::copy_file(p1, p2, boost::filesystem::copy_option::overwrite_if_exists);
+      }
+    }
+    boost::filesystem::remove_all(mps_tmp_store);
+  }
+
   return 0;
 }

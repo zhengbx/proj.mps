@@ -22,7 +22,7 @@ struct Input {
   double thr1p, thrnp;
   int M;
   bool calc_spectra, savemps, bcs;
-  string temp_prefix, temp, path;
+  string temp_prefix, temp, path; // temp is temporary dir, path is input file path
 
   Input() : thr1p(1e-7), thrnp(1e-8), M(0), calc_spectra(true), savemps(false) {
     temp_prefix = "/scratch/boxiao/MPSTemp";

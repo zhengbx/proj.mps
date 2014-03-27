@@ -41,7 +41,7 @@ QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::sha
     }
   }
 
-  printf("Site %3d has %16d elements   Total Memory = %12.6f GB\n", s1 -> lsites(), nelements, double(nelements) / 1024 / 1024 / 1024 * 8);
+  printf("Site %3d has %16d elements in %3d blocks   Total Memory = %12.6f GB\n", s1 -> lsites(), nelements, blocks.size(), double(nelements) / 1024 / 1024 / 1024 * 8);
 
   #pragma omp parallel for schedule(dynamic, 1) default(shared)
   for (int i = 0; i < blocks.size(); ++i) {
@@ -50,14 +50,10 @@ QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::sha
     dense.reference(*(A.find(idx) -> second));
     compute_dense(dense, ql[idx[0]], idx[1], qr[idx[2]], s1, s2, use_left, additional);
   }
-
   return A;
 }
 
 void compute_dense(DArray<3>& d, int ql, int idx_p, int qr, boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, bool use_left, bool additional) {
-  if (additional) {
-    // compute parity by number of inversion
-  }
   // build overlap matrix
   boost::shared_ptr<Overlap> overlap_calculator;
   if (params.bcs && use_left) {
@@ -228,7 +224,7 @@ void Overlap_Slater_Left::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boo
     this_site_up = false;
     parity = (total_b % 2 == 1) ? 1 : -1;
     work_b.SubMatrix(1, 1, 1, rcore) = sr -> lcore().Row(nsites);
-    work_b.SubMatrix(2, lcore+1, 1, rcore) = sl -> lcore().t() * sr -> lcore().Rows(1, nsites-1);    
+    work_b.SubMatrix(2, lcore+1, 1, rcore) = sl -> lcore().t() * sr -> lcore().Rows(1, nsites-1);
     work_a.SubMatrix(1, lcore, 1, rcore) = sl -> lcore().t() * sr -> lcore().Rows(1, nsites-1);
   }
 }
@@ -257,7 +253,7 @@ double Overlap_Slater::operator() (const vector<bool>& c1, const vector<bool>& c
 
   double detA = (total_a == 0) ? 1. : work_a.Determinant();
   double detB = (total_b == 0) ? 1. : work_b.Determinant();
-
+ 
   return parity * detA * detB;
 }
 
@@ -320,7 +316,6 @@ void Overlap_Slater_Left::build_ca_block(const vector<bool>& c1, const vector<bo
       }
     }
   }
-
   if (ractive_b) { // ca, sa blocks in beta spin
     int count = 0;
     for (int i = 0; i < ractive_size; ++i) {
@@ -391,7 +386,7 @@ void Overlap_Slater_Left::build_aa_block(const vector<bool>& c1, const vector<bo
     for (int i = 0; i < lactive_size; ++i) {
       if (c1[i+lactive_size]) {
         int count_r = 0;
-        for (int j = 0; i < ractive_size; ++j) {
+        for (int j = 0; j < ractive_size; ++j) {
           if (c2[j+ractive_size]) {
             work_b(shift+count_l, rcore+count_r+1) = m_aa(i+1, j+1);
             ++count_r;

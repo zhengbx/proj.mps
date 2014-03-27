@@ -128,7 +128,7 @@ ActiveSpaceIterator_BCS::ActiveSpaceIterator_BCS(int q, const SchmidtBasis* _bas
 
 void ActiveSpaceIterator_Slater::build_iterator() {
   auto wtable_a = combinations(weight, na, params.thrnp / weight_bound(weight, nb));
-  auto wtable_b = combinations(weight, na, params.thrnp / weight_bound(weight, na));
+  auto wtable_b = combinations(weight, nb, params.thrnp / weight_bound(weight, na));
 
   for (auto it1 = wtable_a.begin(); it1 != wtable_a.end(); ++it1) {
     for (auto it2 = wtable_b.begin(); it2 != wtable_b.end(); ++it2) {
@@ -212,6 +212,7 @@ boost::shared_ptr<ActiveSpaceIterator> SchmidtBasis::iterator(int q) {
 
 std::ostream& operator << (std::ostream& os, const vector<bool>& bits) {
   for (int i = 0; i < bits.size(); ++i) {
-    cout << (bits[i] ? 1 : 0);
+    os << (bits[i] ? 1 : 0);
   }
+  return os;
 }

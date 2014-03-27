@@ -1,5 +1,6 @@
 #include "schedule.h"
 #include "timer.h"
+#include "mps_op.h"
 
 void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
   int nsites = basis.size()-1;
@@ -27,7 +28,7 @@ void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
       Timer t;
       t.start();
       QSDArray<3, Quantum> A = generate_mps(basis[do_site], basis[do_site+1], do_site == nsites/2);
-      A.clear();
+      save_site(A, do_site, params.temp.c_str());
       t.pause();
       printf("Finished: Generating MPS of Site %3d On processor %2d Time = %6.2f\n", do_site, world.rank(), t.time());
       basis[do_site].reset();

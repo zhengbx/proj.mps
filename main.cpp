@@ -86,8 +86,8 @@ int main(int argc, char* argv[]){
     for (int i = 0; i < nsites+1; ++i) {
       if (i % world.size() != 0) {
         world.recv(i % world.size(), i, basis_set[i]);
-        cout << *basis_set[i] << endl;        
       }
+      cout << *basis_set[i] << endl;      
     }
   } else {
     for (int i = 0; i < nsites+1; ++i) {

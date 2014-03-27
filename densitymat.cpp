@@ -48,8 +48,8 @@ boost::shared_ptr<SchmidtBasis> SlaterDM::basis(int cut) const {
 }
 
 boost::shared_ptr<SchmidtBasis> BCSDM::basis(int cut) const {
-  Matrix la(cut*2, 0), lc(cut*2, 0); // active orbitals
-  Matrix ra((nsites-cut)*2, 0), rc((nsites-cut)*2, 0); // core orbitals
+  Matrix la(cut*2, 0), lc(cut*2, 0); // left orbitals
+  Matrix ra((nsites-cut)*2, 0), rc((nsites-cut)*2, 0); // right orbitals
   vector<double> lweight; // this is the square of natural orbital norm
   SymmetricMatrix S;
   DiagonalMatrix D;
@@ -91,6 +91,7 @@ boost::shared_ptr<SchmidtBasis> BCSDM::basis(int cut) const {
       }
     }
   }
+
   return boost::shared_ptr<SchmidtBasis>(new SchmidtBasis_BCS(lc, rc, la, ra, lweight));
 }
 

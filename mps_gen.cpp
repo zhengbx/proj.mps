@@ -41,21 +41,23 @@ QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::sha
     }
   }
 
-  cout << "Site " << s1 -> lsites() <<  " Number of Elements " << nelements << "  Total memory " << (double)nelements / 1024 / 1024 / 1024 * 8 << " GB" << endl;
+  printf("Site %3d has %16d elements   Total Memory = %12.6f GB\n", s1 -> lsites(), nelements, double(nelements) / 1024 / 1024 / 1024 * 8);
 
   #pragma omp parallel for schedule(dynamic, 1) default(shared)
   for (int i = 0; i < blocks.size(); ++i) {
     auto idx = blocks[i];
     DArray<3> dense;
     dense.reference(*(A.find(idx) -> second));
-    compute_dense(dense, ql[idx[0]], idx[1], qr[idx[2]], s1, s2, use_left);
+    compute_dense(dense, ql[idx[0]], idx[1], qr[idx[2]], s1, s2, use_left, additional);
   }
 
-  if (additional) {}
   return A;
 }
 
-void compute_dense(DArray<3>& d, int ql, int idx_p, int qr, boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, bool use_left) {
+void compute_dense(DArray<3>& d, int ql, int idx_p, int qr, boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, bool use_left, bool additional) {
+  if (additional) {
+    // compute parity by number of inversion
+  }
   // build overlap matrix
   boost::shared_ptr<Overlap> overlap_calculator;
   if (params.bcs && use_left) {
@@ -70,16 +72,98 @@ void compute_dense(DArray<3>& d, int ql, int idx_p, int qr, boost::shared_ptr<Sc
   
   auto it_l = sl -> iterator(ql); // ptr to active space iterator
   auto it_r = sr -> iterator(qr);
-  
-  for (int i = 0; i < d.shape(0); ++i) {
-    vector<bool> c1 = it_l -> get_config(i, use_left);
-    for (int j = 0; j < d.shape(2); ++j) {
-      vector<bool> c2 = it_r -> get_config(j, use_left);
-      //d(i, idx_p, j) = (*overlap_calculator)(c1, c2);
+ 
+  if (additional) {
+    int com_parity = common_parity(sl, it_l);
+    for (int i = 0; i < d.shape(0); ++i) {
+      vector<bool> c1 = it_l -> get_config(i, use_left);
+      double factor = it_l -> get_schmidt_coef(i) * individual_parity(c1) * com_parity;
+      for (int j = 0; j < d.shape(2); ++j) {
+        vector<bool> c2 = it_r -> get_config(j, use_left);
+        d(i, 0, j) = (*overlap_calculator)(c1, c2) * factor;
+      }
+    }
+  } else {
+    for (int i = 0; i < d.shape(0); ++i) {
+      vector<bool> c1 = it_l -> get_config(i, use_left);
+      for (int j = 0; j < d.shape(2); ++j) {
+        vector<bool> c2 = it_r -> get_config(j, use_left);
+        d(i, 0, j) = (*overlap_calculator)(c1, c2);
+      }
     }
   }
 }
 
+/*
+ * compute parity
+ *  Generic order of BCS wavefunction is defined as
+ *  |core_l>|core_r>|active>
+ *  the order of schmidt rep is
+ *  |core_l>|active_l>|core_r>|active_r>
+ *  so the common factor is nla_occ * nrc
+ *  individual factor is the number of inverse of {|al>|ar>}
+ * 
+ *  Generic order of Slater determinant is
+ *  |core_la>|cora_ra>|active_a>|core_lb>|cora_rb>|active_b>
+ *  schmidt rep order is
+ *  |core_la>|active_la>|core_lb>|active_lb>|cora_ra>|active_ra>|cora_rb>|active_rb>
+ *  the common factor is thus nrc*(nla_a+nlc+nla_b)+nra_a*(nlc+nla_b)+nrc*nla_b
+ *  = nrc*(nla_a+nlc) + nra_a*(nlc+nla_b)
+ *  individual factor is then the number od inverse {|ala>|ara>} * {|alb>|arb>}
+ */
+
+int common_parity(boost::shared_ptr<SchmidtBasis> s, boost::shared_ptr<ActiveSpaceIterator> it) {
+  int noi;
+  if (params.bcs) {
+    noi = it->occs()[0] * s->nrcore();
+  } else {
+    noi = s->nrcore() * (it->occs()[0] + s->nlcore()) + (s->nactive()-it->occs()[0]) * (s->nlcore() + it->occs()[1]);
+  }
+  return (noi % 2 == 0) ? 1 : -1;  
+}
+
+int individual_parity(const vector<bool>& bits) {
+  int noi;
+  if (params.bcs) {
+    vector<int> l, r;
+    for (int i = 0; i < bits.size(); ++i) {
+      if (bits[i]) {
+        l.push_back(i);
+      } else {
+        r.push_back(i);
+      }
+    }
+    int pos = 0;
+    for (int i = 0; i < r.size(); ++i) {
+      while (pos < l.size() && r[i] > l[pos]) ++pos;
+      noi += l.size() - pos;
+    }
+  } else {
+    vector<int> la, ra, lb, rb;
+    for (int i = 0; i < bits.size()/2; ++i) {
+      if (bits[i]) {
+        la.push_back(i);
+      } else {
+        ra.push_back(i);
+      }
+      if (bits[i+bits.size()/2]) {
+        lb.push_back(i);
+      } else {
+        rb.push_back(i);
+      }
+    }
+    int pos = 0;
+    for (int i = 0; i < ra.size(); ++i) {
+      while (pos < la.size() && ra[i] > la[pos]) ++pos;
+      noi += la.size() - pos;
+    }
+    for (int i = 0; i < rb.size(); ++i) {
+      while (pos < lb.size() && rb[i] > lb[pos]) ++pos;
+      noi += lb.size() - pos;
+    }
+  }
+  return (noi % 2 == 0) ? 1 : -1;
+}
 /* 
  * Overlap_Slater
 */
@@ -98,6 +182,7 @@ Overlap_Slater_Left::Overlap_Slater_Left(boost::shared_ptr<SchmidtBasis> sl, boo
   ractive_b = total_b - rcore; // a electrons in right_basis active space
   work_a.ReSize(total_a, total_a);
   work_b.ReSize(total_b, total_b);
+  work_a = 0; work_b = 0;
 
   m_ca = sl -> lcore().t() * sr -> lactive().Rows(1, nsites-1);
   m_ac = sl -> lactive().t() * sr -> lcore().Rows(1, nsites-1);
@@ -109,18 +194,19 @@ Overlap_Slater_Left::Overlap_Slater_Left(boost::shared_ptr<SchmidtBasis> sl, boo
 
 Overlap_Slater_Right::Overlap_Slater_Right(boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, int ql, int qr) {
   nsites = sl -> rsites();
-  total_a = (nsites+ql)/2; // total a electron
-  total_b = (nsites-ql)/2; // total b electron
+  total_a = (nsites-ql)/2; // total a electron
+  total_b = (nsites+ql)/2; // total b electron
   lactive_size = sl -> nactive();
   ractive_size = sr -> nactive();
   lcore = sl -> nrcore();  // electrons in left_basis core
   rcore = sr -> nrcore();  // electrons in right_basis core
   lactive_a = total_a - lcore; // a electrons in left_basis active space
   lactive_b = total_b - lcore; // b electrons in left_basis active space
-  ractive_a = (nsites-1+qr)/2 - rcore; // a electrons in right_basis active space
-  ractive_b = (nsites-1-qr)/2 - rcore; // a electrons in right_basis active space
+  ractive_a = (nsites-1-qr)/2 - rcore; // a electrons in right_basis active space
+  ractive_b = (nsites-1+qr)/2 - rcore; // a electrons in right_basis active space
   work_a.ReSize(total_a, total_a);
   work_b.ReSize(total_b, total_b);
+  work_a = 0; work_b = 0;
 
   m_ca = sr -> rcore().t() * sl -> ractive().Rows(2, nsites);
   m_ac = sr -> ractive().t() * sl -> rcore().Rows(2, nsites);
@@ -366,32 +452,33 @@ Overlap_BCS_Left::Overlap_BCS_Left(boost::shared_ptr<SchmidtBasis> sl, boost::sh
   ractive = ntotal - rcore;
 
   work.ReSize(ntotal, ntotal);
+  work = 0;
 
   m_ca = sl -> lcore().t() * (sr -> lactive().Rows(1, nsites-1) & sr -> lactive().Rows(nsites+1, 2*nsites-1));
   m_ac = sl -> lactive().t() * (sr -> lcore().Rows(1, nsites-1) & sr -> lcore().Rows(nsites+1, 2*nsites-1));
   m_aa = sl -> lactive().t() * (sr -> lactive().Rows(1, nsites-1) & sr -> lactive().Rows(nsites+1, 2*nsites-1));
   m_sa = sr -> lactive().Row(2*nsites) & sr -> lactive().Row(nsites);
-
   build_cc_block(sl, sr);
 }
 
 Overlap_BCS_Right::Overlap_BCS_Right(boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, int ql, int qr) {
   nsites = sl -> rsites(); // number of sites in the left basis
-  ntotal = ql + nsites;  // total number of orbitals: each orbital raises spin by 1, from initial s=-nsites
+  ntotal = -ql + nsites; // total number of orbitals: each orbital raises spin by 1, from initial s=-nsites
   lactive_size = sl -> nactive();
   ractive_size = sr -> nactive();
-  lcore = sl -> nlcore();
-  rcore = sr -> nlcore();
+  lcore = sl -> nrcore();
+  rcore = sr -> nrcore();
   lactive = ntotal - lcore;
-  ractive = qr + (nsites-1) - rcore;
+  ractive = -qr + (nsites-1) - rcore;
 
   work.ReSize(ntotal, ntotal);
+  work = 0;
 
   m_ca = sr -> rcore().t() * (sl -> ractive().Rows(2, nsites) & sl -> ractive().Rows(nsites+2, 2*nsites));
   m_ac = sr -> ractive().t() * (sl -> rcore().Rows(2, nsites) & sl -> rcore().Rows(nsites+2, 2*nsites));
   m_aa = sr -> ractive().t() * (sl -> ractive().Rows(2, nsites) & sl -> ractive().Rows(nsites+2, 2*nsites));
-  m_sa = sl -> ractive().Row(1) & sl -> ractive().Row(1);
-
+  m_sa = sl -> ractive().Row(nsites+1) & sl -> ractive().Row(1);
+  
   build_cc_block(sl, sr);
 }
 
@@ -414,7 +501,7 @@ void Overlap_BCS_Right::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boost
   if (ntotal > rcore + ractive) { // then this site is spin up
     this_site_up = true;
     parity = 1;
-    work.SubMatrix(1, 2, 1, lcore) = sl -> rcore().Row(1) & sl -> rcore().Row(1);
+    work.SubMatrix(1, 2, 1, lcore) = sl -> rcore().Row(nsites+1) & sl -> rcore().Row(1);
     work.SubMatrix(3, rcore + 2, 1, lcore) = sr -> rcore().t() * (sl -> rcore().Rows(2, nsites) & sl -> rcore().Rows(nsites+2, 2*nsites));
   } else {
     this_site_up = false;
@@ -429,14 +516,13 @@ double Overlap_BCS::operator() (const vector<bool>& c1, const vector<bool>& c2) 
   build_aa_block(c1, c2);
   
   double det = (ntotal == 0) ? 1. : work.Determinant();
-
   return parity * det;
 }
 
 void Overlap_BCS_Left::build_ac_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (lactive) {
     int shift = this_site_up ? lcore+3 : lcore+1, count = 0;
-    for (int i = 0; i < ractive_size; ++i) {
+    for (int i = 0; i < lactive_size; ++i) {
       if (c1[i]) {
         work.SubMatrix(shift+count, shift+count, 1, rcore) = m_ac.Row(i+1);
         ++count;
@@ -448,7 +534,7 @@ void Overlap_BCS_Left::build_ac_block(const vector<bool>& c1, const vector<bool>
 void Overlap_BCS_Right::build_ac_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (ractive) {
     int shift = this_site_up ? rcore+3 : rcore+1, count = 0;
-    for (int i = 0; i < lactive_size; ++i) {
+    for (int i = 0; i < ractive_size; ++i) {
       if (c2[i]) {
         work.SubMatrix(shift+count, shift+count, 1, lcore) = m_ac.Row(i+1);
         ++count;

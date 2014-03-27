@@ -8,6 +8,7 @@
 #include <boost/serialization/shared_ptr.hpp>
 #include <boost/serialization/map.hpp>
 #include <map>
+#include <math.h>
 
 using std::map;
 
@@ -38,11 +39,15 @@ public:
   vector<bool> get_config(const int& i, bool left = true) const {  
     return std::move(left ? l_list[i]: r_list[i]);
   }
+  double get_schmidt_coef(const int& i) const {
+    return sqrt(npweight[i]);
+  }
+  virtual vector<int> occs() const = 0;
 };
 
 class ActiveSpaceIterator_Slater: public ActiveSpaceIterator {
 protected:
-  int na, nb; // number of alpha and beta electrons
+  int na, nb; // number of alpha and beta electrons in active space
   void build_iterator();
 
   friend class boost::serialization::access;
@@ -53,6 +58,10 @@ protected:
   }
 public:
   ActiveSpaceIterator_Slater(int q, const SchmidtBasis* _basis);
+  vector<int> occs() const {
+    vector<int> temp = {na, nb};
+    return std::move(temp);
+  }
 };
 
 
@@ -69,8 +78,11 @@ protected:
   }
 public:
   ActiveSpaceIterator_BCS(int q, const SchmidtBasis* _basis);
+  vector<int> occs() const {
+    vector<int> temp = {nqp};
+    return std::move(temp);
+  }
 };
-
 
 class SchmidtBasis {
 protected:

@@ -1,4 +1,5 @@
 #include "schedule.h"
+#include "timer.h"
 
 void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
   int nsites = basis.size()-1;
@@ -23,10 +24,12 @@ void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
     while (do_site != -1) {
       world.recv(0, do_site, basis[do_site]);
       world.recv(0, do_site+1, basis[do_site+1]);
-      printf("Started : Generating MPS of Site %3d On processor %2d\n", do_site, world.rank());
+      Timer t;
+      t.start();
       QSDArray<3, Quantum> A = generate_mps(basis[do_site], basis[do_site+1], do_site == nsites/2);
       A.clear();
-      printf("Finished: Generating MPS of Site %3d On processor %2d\n", do_site, world.rank());
+      t.pause();
+      printf("Finished: Generating MPS of Site %3d On processor %2d Time = %6.2f\n", do_site, world.rank(), t.time());
       basis[do_site].reset();
       basis[do_site+1].reset();
       world.send(0, nsites+1, world.rank());

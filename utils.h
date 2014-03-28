@@ -21,17 +21,22 @@ using std::string;
 struct Input {
   double thr1p, thrnp;
   int M;
-  bool calc_spectra, savemps, bcs;
+  bool calc_spectra, savemps, bcs, mem_test;
   string temp_prefix, temp, path; // temp is temporary dir, path is input file path
 
-  Input() : thr1p(1e-7), thrnp(1e-8), M(0), calc_spectra(true), savemps(false) {
-    temp_prefix = "/scratch/boxiao/MPSTemp";
-  }
+  Input():
+    thr1p(1e-7),
+    thrnp(1e-8),
+    M(0),
+    calc_spectra(true),
+    savemps(false),
+    mem_test(false),
+    temp_prefix("/scratch/boxiao/MPSTemp") {}
   friend std::ostream& operator << (std::ostream& os, const Input& inp);
   friend class boost::serialization::access;
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
     ar & thr1p & thrnp & M & bcs;
-    ar & calc_spectra & savemps;
+    ar & calc_spectra & savemps & mem_test;
     ar & temp_prefix & temp & path;
   }
 };

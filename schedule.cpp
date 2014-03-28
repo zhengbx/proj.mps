@@ -1,6 +1,8 @@
 #include "schedule.h"
-#include "timer.h"
 #include "mps_op.h"
+#include <boost/mpi.hpp>
+
+namespace mpi = boost::mpi;
 
 void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
   int nsites = basis.size()-1;
@@ -15,9 +17,12 @@ void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
       world.send(rank_ready, i+1, basis[i+1]);
       basis[i].reset();
     }
-    for (int i = 1; i < world.size(); ++i) {
+    for (int i = 2; i < world.size(); ++i) {
       world.send(i, -1, -1);
     }
+  } else if (world.rank() == 1) {
+    compress_on_disk(nsites, MPS_DIRECTION::Left, params.M, params.temp.c_str(), true, true);
+    compress_on_disk(nsites, MPS_DIRECTION::Right, params.M, params.temp.c_str(), true, true);
   } else {
     int do_site;
     world.send(0, nsites+1, world.rank());
@@ -25,18 +30,15 @@ void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
     while (do_site != -1) {
       world.recv(0, do_site, basis[do_site]);
       world.recv(0, do_site+1, basis[do_site+1]);
-      Timer t;
-      t.start();
       QSDArray<3, Quantum> A = generate_mps(basis[do_site], basis[do_site+1], do_site == nsites/2);
       save_site(A, do_site, params.temp.c_str());
-      t.pause();
-      printf("Finished: Generating MPS of Site %3d On processor %2d Time = %6.2f\n", do_site, world.rank(), t.time());
       basis[do_site].reset();
       basis[do_site+1].reset();
       world.send(0, nsites+1, world.rank());
       world.recv(0, -1, do_site);
     }
   }
+  world.barrier();
 }
 
 void static_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {

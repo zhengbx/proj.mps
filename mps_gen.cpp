@@ -1,8 +1,14 @@
 #include "mps_gen.h"
 #include <omp.h>
+#include <boost/mpi.hpp>
 #include <cassert>
+#include "timer.h"
+
+namespace mpi = boost::mpi;
 
 QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::shared_ptr<SchmidtBasis> s2, bool additional) {
+  Timer t;
+  t.start();
   // assign quantums
   QSDArray<3, Quantum> A;
   TVector<Qshapes<Quantum>, 3> qshapes;
@@ -41,15 +47,20 @@ QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::sha
     }
   }
 
-  printf("Site %3d has %16d elements in %3d blocks   Total Memory = %12.6f GB\n", s1 -> lsites(), nelements, blocks.size(), double(nelements) / 1024 / 1024 / 1024 * 8);
-
-  #pragma omp parallel for schedule(dynamic, 1) default(shared)
-  for (int i = 0; i < blocks.size(); ++i) {
-    auto idx = blocks[i];
-    DArray<3> dense;
-    dense.reference(*(A.find(idx) -> second));
-    compute_dense(dense, ql[idx[0]], idx[1], qr[idx[2]], s1, s2, use_left, additional);
+  mpi::communicator world;
+  printf("On Processor %3d: Site %3d has %12d elements in %3d blocks    Total Memory = %12.6f GB\n", world.rank(), s1 -> lsites(), nelements, blocks.size(), double(nelements) / 1024 / 1024 / 1024 * 8);
+  if (!params.mem_test) {
+    //#pragma omp parallel for schedule(dynamic, 1) default(shared)
+    for (int i = 0; i < blocks.size(); ++i) {
+      auto idx = blocks[i];
+      DArray<3> dense;
+      dense.reference(*(A.find(idx) -> second));
+      compute_dense(dense, ql[idx[0]], idx[1], qr[idx[2]], s1, s2, use_left, additional);
+    }
   }
+  t.pause();
+  printf("On Processor %3d: Site %3d Time = %6.2f\n", world.rank(), s1 -> lsites(), t.time());
+  
   return A;
 }
 

@@ -50,6 +50,8 @@ void read_config(string file, Input& inp) {
       inp.calc_spectra = false;
     } else if (boost::iequals(tokens[0], "savemps")) {
       inp.savemps = true;
+    } else if (boost::iequals(tokens[0], "memtest")) {
+      inp.mem_test = true;
     } else if (boost::iequals(tokens[0], "prefix")) {
       inp.temp_prefix = tokens[1];
     } else {

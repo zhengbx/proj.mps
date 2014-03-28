@@ -8,7 +8,7 @@ void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
   int nsites = basis.size()-1;
   mpi::communicator world;  
   if (world.rank() == 0) {
-    for (int i = 0; i < nsites; ++i) {
+    for (int i = 0; i <= nsites/2; ++i) {
       int rank_ready;
       world.recv(mpi::any_source, nsites+1, rank_ready);
       //printf("Master: Generating MPS of Site %3d On processor %2d\n", i, rank_ready);
@@ -17,12 +17,26 @@ void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
       world.send(rank_ready, i+1, basis[i+1]);
       basis[i].reset();
     }
+    for (int i = nsites-1; i > nsites/2; --i) {
+      int rank_ready;
+      world.recv(mpi::any_source, nsites+1, rank_ready);
+      //printf("Master: Generating MPS of Site %3d On processor %2d\n", i, rank_ready);
+      world.send(rank_ready, -1, i);
+      world.send(rank_ready, i, basis[i]);
+      world.send(rank_ready, i+1, basis[i+1]);
+      basis[i+1].reset();
+    }
+    basis[nsites/2+1].reset();
     for (int i = 2; i < world.size(); ++i) {
       world.send(i, -1, -1);
     }
   } else if (world.rank() == 1) {
-    compress_on_disk(nsites, MPS_DIRECTION::Left, params.M, params.temp.c_str(), true, true);
-    compress_on_disk(nsites, MPS_DIRECTION::Right, params.M, params.temp.c_str(), true, true);
+    partial_compress(nsites, MPS_DIRECTION::Left, params.M, params.temp.c_str(), nsites/2);
+    partial_compress(nsites, MPS_DIRECTION::Right, params.M, params.temp.c_str(), nsites/2-2);
+    MPS<Quantum> A(nsites);
+    cout << "Now normalize" << endl;
+    normalize_on_disk(A, params.temp.c_str());
+    //compress_on_disk(nsites, MPS_DIRECTION::Right, params.M, params.temp.c_str(), true, true);
   } else {
     int do_site;
     world.send(0, nsites+1, world.rank());

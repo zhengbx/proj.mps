@@ -66,15 +66,22 @@ double norm_on_disk(MPS<Quantum> &mps, const char* filename) {
 }
 
 
-void normalize_on_disk(MPS<Quantum>& mps, const char* filename) {
+void normalize_on_disk(MPS<Quantum>& mps, const char* filename, int site) {
   double norm = norm_on_disk(mps, filename);
-  int L = mps.size();  
-  double alpha = pow(1./norm, 1./(double)L);
-  for (int i = 0; i < L; ++i) {
-    load_site(mps, i, filename);
-    QSDscal(alpha, mps[i]);
-    save_site(mps, i, filename);
-    mps[i].clear();
+  if (site < 0) {
+    int L = mps.size();
+    double alpha = pow(1./norm, 1./(double)L);
+    for (int i = 0; i < L; ++i) {
+      load_site(mps, i, filename);
+      QSDscal(alpha, mps[i]);
+      save_site(mps, i, filename);
+      mps[i].clear();
+    }
+  } else {
+    load_site(mps, site, filename);
+    QSDscal(1./norm, mps[site]);
+    save_site(mps, site, filename);
+    mps[site].clear();
   }
 }
 
@@ -311,63 +318,77 @@ void spectra(const tuple<SDArray<1>, Qshapes<Quantum>>& raw) {
   fspec.close();
 }
 
-tuple<SDArray<1>, Qshapes<Quantum>> Schmidt_on_disk(MPS<Quantum>& mps, int site, const char* filename) {
+tuple<SDArray<1>, Qshapes<Quantum>> Schmidt_on_disk(MPS<Quantum>& mps, int site, const char* filename, int lc, int rc) {
   vector<double> coef;
   int L = mps.size();
+  if (lc < 0) {
+    lc = 0;
+  }
+  if (rc < 0) {
+    rc = L-1;
+  }
   if (site < 0) {
     site = L/2;
   }
   
-  load_site(mps, 0, filename);  // load first site
-  for(int i = 0;i < site;++i){
-    SDArray<1> S;//singular values
-    QSDArray<2> V;//V^T
-    QSDArray<3> U;//U --> unitary left normalized matrix
-    
-    //then svd
-    QSDgesvd(RightArrow,mps[i],S,U,V,0);
-    //copy unitary to mps
-    QSDcopy(U,mps[i]);
-    save_site(mps, i, filename);
-    mps[i].clear();
+  if (lc < site) {
+    load_site(mps, lc, filename);
+    for(int i = lc;i < site;++i){
+      SDArray<1> S;//singular values
+      QSDArray<2> V;//V^T
+      QSDArray<3> U;//U --> unitary left normalized matrix
+      
+      //then svd
+      QSDgesvd(RightArrow,mps[i],S,U,V,0);
+      //copy unitary to mps
+      QSDcopy(U,mps[i]);
+      save_site(mps, i, filename);
+      mps[i].clear();
 
-    //paste S and V together
-    SDdidm(S,V);
-    // now read next site
-    load_site(mps, i+1, filename);
-    //and multiply with mpx on the next site
-    U = mps[i + 1];
-    //when compressing dimensions will change, so reset:
-    mps[i + 1].clear();
-    QSDcontract(1.0,V,shape(1),U,shape(0),0.0,mps[i + 1]);
+      //paste S and V together
+      SDdidm(S,V);
+      // now read next site
+      load_site(mps, i+1, filename);
+      //and multiply with mpx on the next site
+      U = mps[i + 1];
+      //when compressing dimensions will change, so reset:
+      mps[i + 1].clear();
+      QSDcontract(1.0,V,shape(1),U,shape(0),0.0,mps[i + 1]);
+    }
+    // save matrix[site]
+    save_site(mps, site, filename);
+    mps[site].clear();
   }
 
-  // save matrix[site]
-  save_site(mps, site, filename);
-  mps[site].clear();
+  if (rc > site) {
+    load_site(mps, rc, filename);  // load first site
+    for(int i = rc;i > site;--i){
+      SDArray<1> S;//singular values
+      QSDArray<3> V;//V^T --> unitary right normalized matrix
+      QSDArray<2> U;//U
+      //then SVD: 
+      QSDgesvd(RightArrow,mps[i],S,U,V,0);
+      //copy unitary to mpx
+      QSDcopy(V,mps[i]);
+      save_site(mps, i, filename);
+      mps[i].clear();
 
-  load_site(mps, L-1, filename);  // load first site
-  for(int i = L - 1;i > site;--i){
-    SDArray<1> S;//singular values
-    QSDArray<3> V;//V^T --> unitary right normalized matrix
-    QSDArray<2> U;//U
-    //then SVD: 
-    QSDgesvd(RightArrow,mps[i],S,U,V,0);
-    //copy unitary to mpx
-    QSDcopy(V,mps[i]);
-    save_site(mps, i, filename);
-    mps[i].clear();
-
-    //paste U and S together
-    SDdimd(U,S);
-    // now read next site
-    load_site(mps, i-1, filename);
-    //and multiply with mpx on the next site
-    V = mps[i - 1];
-    //when compressing dimensions will change, so reset:
-    mps[i - 1].clear();
-    QSDcontract(1.0,V,shape(2),U,shape(0),0.0,mps[i - 1]);
+      //paste U and S together
+      SDdimd(U,S);
+      // now read next site
+      load_site(mps, i-1, filename);
+      //and multiply with mpx on the next site
+      V = mps[i - 1];
+      //when compressing dimensions will change, so reset:
+      mps[i - 1].clear();
+      QSDcontract(1.0,V,shape(2),U,shape(0),0.0,mps[i - 1]);
+    }
+    // save matrix[site]
+    save_site(mps, site, filename);
+    mps[site].clear();
   }
+  
+  load_site(mps, site, filename);  
   SDArray<1> S;//singular values
   QSDArray<3> V;//V^T
   QSDArray<2> U;//U --> unitary left normalized matrix
@@ -376,6 +397,7 @@ tuple<SDArray<1>, Qshapes<Quantum>> Schmidt_on_disk(MPS<Quantum>& mps, int site,
   // save matrix[site]
   save_site(mps, site, filename);
   mps[site].clear();
+  cout << S << endl;
   return std::make_tuple(S, U.qshape()[0]);
 }
 

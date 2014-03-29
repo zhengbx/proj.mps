@@ -117,7 +117,7 @@ int main(int argc, char* argv[]){
 
       if (params.calc_spectra) {
         cout << "\nnow calculate entanglement entropy\n";
-        auto raw_spectra = Schmidt_on_disk(A, -1, params.temp.c_str());
+        auto raw_spectra = Schmidt_on_disk(A, -1, params.temp.c_str(), nsites/2-2, nsites/2-2);
         spectra(raw_spectra);
       }
 

@@ -35,7 +35,7 @@ void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
     partial_compress(nsites, MPS_DIRECTION::Right, params.M, params.temp.c_str(), nsites/2-2);
     MPS<Quantum> A(nsites);
     cout << "Now normalize" << endl;
-    normalize_on_disk(A, params.temp.c_str());
+    normalize_on_disk(A, params.temp.c_str(), nsites/2-2);
     //compress_on_disk(nsites, MPS_DIRECTION::Right, params.M, params.temp.c_str(), true, true);
   } else {
     int do_site;

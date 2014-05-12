@@ -15,7 +15,7 @@ using std::cout;
 using std::endl;
 
 int main(int argc, char* argv[]){
-  mpi::environment env(argc, argv);  
+  mpi::environment env(argc, argv);
   cout.setf(std::ios::fixed, std::ios::floatfield);
   cout.precision(10);
   if (argc <= 1) {
@@ -24,8 +24,8 @@ int main(int argc, char* argv[]){
   }
   
   mpi::communicator world;
-  if (world.size() < 2) {
-    cout << "This program runs with at least 2 cores" << endl;
+  if (world.size() < 3) {
+    cout << "This program runs with at least 3 cores" << endl;
     abort();
   }
   if (world.rank() == 0) {
@@ -51,7 +51,7 @@ int main(int argc, char* argv[]){
   int nsites = dm -> get_nsites();
   vector<boost::shared_ptr<SchmidtBasis>> basis_set(nsites+1, nullptr);
 
-  world.barrier();  
+  world.barrier();
   Timer t_basis("Build Basis");
   t_basis.start();
   for (int i = 0; i < nsites+1; ++i) {
@@ -112,12 +112,12 @@ int main(int argc, char* argv[]){
   if (world.rank() == 0) {
     boost::filesystem::path mps_tmp_store(params.temp);
     if (!params.mem_test) {
-      MPS<Quantum> A(nsites);
+      MPS<dtype, Quantum> A(nsites);
       //compress_on_disk(A, MPS_DIRECTION::Right, params.M, params.temp.c_str(), true);
 
       if (params.calc_spectra) {
-        cout << "\nnow calculate entanglement entropy\n";
-        auto raw_spectra = Schmidt_on_disk(A, -1, params.temp.c_str(), nsites/2-2, nsites/2-2);
+        cout << "\nnow calculate entanglement spectrum\n";
+        auto raw_spectra = Schmidt_on_disk(nsites, -1, params.temp.c_str(), nsites/2-2, nsites/2-2);
         spectra(raw_spectra);
       }
 

@@ -21,9 +21,9 @@ BOOSTDIR=/home/boxiao/usr
 BOOSTINC=-I$(BOOSTDIR)/include
 BOOSTLIB=-L$(BOOSTDIR)/lib -lboost_serialization -lboost_filesystem -lboost_system -lboost_mpi
 
-BTASINC=-I$(HOME)/mps/btas-master/include
-BTASLIB=-L$(HOME)/mps/btas-master/lib
-MPSXXINC=-I$(HOME)/mps/mpsxx-master
+BTASINC=-I$(HOME)/mps/btas/include
+BTASLIB=-L$(HOME)/mps/btas/lib
+MPSXXINC=-I$(HOME)/mps/mpsxx
 
 NEWMATLIB=-L./newmat10 -lnewmat
 

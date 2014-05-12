@@ -26,6 +26,7 @@ protected:
   ActiveSpaceIterator() {}  
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
     ar & quantum & nsize & l_list & r_list & weight & npweight;
+    basis = nullptr;
   }
 public:
   ActiveSpaceIterator(int q, const SchmidtBasis* _basis);

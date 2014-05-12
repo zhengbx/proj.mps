@@ -6,11 +6,11 @@
 
 namespace mpi = boost::mpi;
 
-QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::shared_ptr<SchmidtBasis> s2, bool additional) {
+QSTArray<dtype, 3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::shared_ptr<SchmidtBasis> s2, bool additional) {
   Timer t;
   t.start();
   // assign quantums
-  QSDArray<3, Quantum> A;
+  QSTArray<dtype, 3, Quantum> A;
   TVector<Qshapes<Quantum>, 3> qshapes;
   TVector<Dshapes, 3> dshapes;
   vector<int> ql(s1->get_q()), qr(s2->get_q()), dl(s1->get_d()), dr(s2->get_d()), qp, dp;
@@ -53,7 +53,7 @@ QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::sha
     //#pragma omp parallel for schedule(dynamic, 1) default(shared)
     for (int i = 0; i < blocks.size(); ++i) {
       auto idx = blocks[i];
-      DArray<3> dense;
+      TArray<dtype, 3> dense;
       dense.reference(*(A.find(idx) -> second));
       compute_dense(dense, ql[idx[0]], idx[1], qr[idx[2]], s1, s2, use_left, additional);
     }
@@ -64,7 +64,7 @@ QSDArray<3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::sha
   return A;
 }
 
-void compute_dense(DArray<3>& d, int ql, int idx_p, int qr, boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, bool use_left, bool additional) {
+void compute_dense(TArray<dtype, 3>& d, int ql, int idx_p, int qr, boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, bool use_left, bool additional) {
   // build overlap matrix
   boost::shared_ptr<Overlap> overlap_calculator;
   if (params.bcs && use_left) {
@@ -130,7 +130,7 @@ int common_parity(boost::shared_ptr<SchmidtBasis> s, boost::shared_ptr<ActiveSpa
 }
 
 int individual_parity(const vector<bool>& bits) {
-  int noi;
+  int noi = 0;
   if (params.bcs) {
     vector<int> l, r;
     for (int i = 0; i < bits.size(); ++i) {

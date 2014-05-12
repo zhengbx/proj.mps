@@ -130,7 +130,7 @@ int common_parity(boost::shared_ptr<SchmidtBasis> s, boost::shared_ptr<ActiveSpa
 }
 
 int individual_parity(const vector<bool>& bits) {
-  int noi;
+  int noi = 0;
   if (params.bcs) {
     vector<int> l, r;
     for (int i = 0; i < bits.size(); ++i) {

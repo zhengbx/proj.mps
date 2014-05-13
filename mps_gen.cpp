@@ -48,7 +48,17 @@ QSTArray<dtype, 3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boo
   }
 
   mpi::communicator world;
-  printf("On Processor %3d: Site %3d has %12d elements in %3d blocks    Total Memory = %12.6f GB\n", world.rank(), s1 -> lsites(), nelements, blocks.size(), d_real(nelements) / 1024 / 1024 / 1024 * 8);
+  
+  int size = 8;
+#ifdef _SINGLE
+  size /= 2;
+#endif
+
+#ifdef _COMPLEX
+  size *= 2;
+#endif
+  
+  printf("On Processor %3d: Site %3d has %12d elements in %3d blocks    Total Memory = %12.6f GB\n", world.rank(), s1 -> lsites(), nelements, blocks.size(), d_real(nelements) / 1024 / 1024 / 1024 * size);
   if (!params.mem_test) {
     //#pragma omp parallel for schedule(dynamic, 1) default(shared)
     for (int i = 0; i < blocks.size(); ++i) {

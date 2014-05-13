@@ -6,7 +6,7 @@
 
 QSTArray<dtype, 3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boost::shared_ptr<SchmidtBasis> s2, bool additional = false);
 
-void compute_dense(DArray<3>& d, int ql, int idx_p, int qr, boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, bool use_left, bool additional = false);
+void compute_dense(TArray<dtype,3>& d, int ql, int idx_p, int qr, boost::shared_ptr<SchmidtBasis> sl, boost::shared_ptr<SchmidtBasis> sr, bool use_left, bool additional = false);
 
 
 int common_parity(boost::shared_ptr<SchmidtBasis> s, boost::shared_ptr<ActiveSpaceIterator> it);

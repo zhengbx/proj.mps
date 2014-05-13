@@ -84,7 +84,7 @@ void normalize_on_disk(const char* filename, int size, int site) {
     }
   } else {
     load_site(mps, site, filename);
-    Scal(1./norm, mps[site]);
+    Scal((d_real)1./norm, mps[site]);
     save_site(mps, site, filename);
     mps[site].clear();
   }
@@ -94,9 +94,9 @@ void check_existence(int i, const char* filename) {
   char name[50];
   sprintf(name,"%s/%d.mps",filename,i);
   while (!boost::filesystem::exists(string(name))) {
-    sleep(2);
+    sleep(1);
   }
-  sleep(2);
+  sleep(1);
 }
 
 typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION& dir, int D, const char* filename, int first, int last) {

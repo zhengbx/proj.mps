@@ -278,7 +278,7 @@ dtype Overlap_Slater::operator() (const vector<bool>& c1, const vector<bool>& c2
   dtype detA = (total_a == 0) ? 1. : work_a.determinant();
   dtype detB = (total_b == 0) ? 1. : work_b.determinant();
  
-  return parity * detA * detB;
+  return (d_real)parity * detA * detB;
 }
 
 void Overlap_Slater_Left::build_ac_block(const vector<bool>& c1, const vector<bool>& c2) {
@@ -551,7 +551,7 @@ dtype Overlap_BCS::operator() (const vector<bool>& c1, const vector<bool>& c2) {
   build_aa_block(c1, c2);
   
   dtype det = (ntotal == 0) ? 1. : work.determinant();
-  return parity * det;
+  return (d_real)parity * det;
 }
 
 void Overlap_BCS_Left::build_ac_block(const vector<bool>& c1, const vector<bool>& c2) {

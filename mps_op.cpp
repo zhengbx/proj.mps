@@ -147,7 +147,7 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
     save_site(mps, last, filename);
     mps[last].clear();
   } else {
-    STArray<dtype, 1> S;//singular values
+    STArray<d_real, 1> S;//singular values
     QSTArray<dtype, 3, Quantum> V;//V^T --> unitary right normalized matrix
     QSTArray<dtype, 2, Quantum> U;//U
     check_existence(first, filename);

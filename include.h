@@ -1,13 +1,22 @@
 #ifndef INCLUDE_H_
 #define INCLUDE_H_
 
+#include <complex>
+
+#ifdef _SINGLE
+typedef std::complex<float> d_comp;
+typedef float d_real;
+#else
+typedef std::complex<double> d_comp;
+typedef double d_real;
+#endif
+
+
 #ifdef _COMPLEX
 #include <complex>
-typedef std::complex<double> dtype;
-typedef double d_real;
+typedef d_comp dtype;
 #else
-typedef double dtype;
-typedef double d_real;
+typedef d_real dtype;
 #endif
 
 #include "SpinQuantum.h"

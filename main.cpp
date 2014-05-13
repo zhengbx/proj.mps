@@ -55,6 +55,7 @@ int main(int argc, char* argv[]){
   t_basis.start();
   for (int i = 0; i < nsites+1; ++i) {
     if (i % world.size() == world.rank()) {
+    //if (world.rank() == 0) {
       cout << "Cut = " << i << " On processor " << world.rank() << endl;
       basis_set[i] = dm -> basis(i);
     }

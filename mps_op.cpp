@@ -59,15 +59,20 @@ d_real norm_on_disk(const char* filename, int size) {
     I.clear();
     //bad style: if no blocks remain, return zero
     if(E.begin() == E.end()) {
-      return 0.0;
+      return (d_real)0.0;
     }
   }
+#ifdef _COMPLEX
   return abs(sqrt((*(E.find(shape(0,0))->second))(0,0)));
+#else
+  return sqrt((*(E.find(shape(0,0))->second))(0,0));
+#endif
 }
 
 
 void normalize_on_disk(const char* filename, int size, int site) {
   d_real norm = norm_on_disk(filename, size);
+
   MPS<dtype, Quantum> mps(size);  
   if (site < 0) {
     d_real alpha = pow(1./norm, 1./(d_real)size);
@@ -396,7 +401,6 @@ tuple<STArray<typename remove_complex<dtype>::type, 1>, Qshapes<Quantum>> Schmid
   QSTArray<dtype, 3, Quantum> V;//V^T
   QSTArray<dtype, 2, Quantum> U;//U --> unitary left normalized matrix
   Gesvd<dtype, 3, 2, Quantum, btas::RightArrow>(mps[site],S,U,V,0);
-
   // save matrix[site]
   save_site(mps, site, filename);
   mps[site].clear();

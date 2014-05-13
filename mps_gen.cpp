@@ -48,7 +48,7 @@ QSTArray<dtype, 3, Quantum> generate_mps(boost::shared_ptr<SchmidtBasis> s1, boo
   }
 
   mpi::communicator world;
-  printf("On Processor %3d: Site %3d has %12d elements in %3d blocks    Total Memory = %12.6f GB\n", world.rank(), s1 -> lsites(), nelements, blocks.size(), double(nelements) / 1024 / 1024 / 1024 * 8);
+  printf("On Processor %3d: Site %3d has %12d elements in %3d blocks    Total Memory = %12.6f GB\n", world.rank(), s1 -> lsites(), nelements, blocks.size(), d_real(nelements) / 1024 / 1024 / 1024 * 8);
   if (!params.mem_test) {
     //#pragma omp parallel for schedule(dynamic, 1) default(shared)
     for (int i = 0; i < blocks.size(); ++i) {
@@ -84,7 +84,7 @@ void compute_dense(TArray<dtype, 3>& d, int ql, int idx_p, int qr, boost::shared
     int com_parity = common_parity(sl, it_l);
     for (int i = 0; i < d.shape(0); ++i) {
       vector<bool> c1 = it_l -> get_config(i, use_left);
-      double factor = it_l -> get_schmidt_coef(i) * individual_parity(c1) * com_parity;
+      d_real factor = it_l -> get_schmidt_coef(i) * individual_parity(c1) * com_parity;
       for (int j = 0; j < d.shape(2); ++j) {
         vector<bool> c2 = it_r -> get_config(j, use_left);
         d(i, 0, j) = (*overlap_calculator)(c1, c2) * factor;
@@ -188,14 +188,15 @@ Overlap_Slater_Left::Overlap_Slater_Left(boost::shared_ptr<SchmidtBasis> sl, boo
   lactive_b = (nsites-1-ql)/2 - lcore; // b electrons in left_basis active space
   ractive_a = total_a - rcore; // a electrons in right_basis active space
   ractive_b = total_b - rcore; // a electrons in right_basis active space
-  work_a.ReSize(total_a, total_a);
-  work_b.ReSize(total_b, total_b);
-  work_a = 0; work_b = 0;
+  work_a.resize(total_a, total_a);
+  work_b.resize(total_b, total_b);
+  work_a.setZero();
+  work_b.setZero();
 
-  m_ca = sl -> lcore().t() * sr -> lactive().Rows(1, nsites-1);
-  m_ac = sl -> lactive().t() * sr -> lcore().Rows(1, nsites-1);
-  m_aa = sl -> lactive().t() * sr -> lactive().Rows(1, nsites-1);
-  m_sa = sr -> lactive().Row(nsites);
+  m_ca = sl -> lcore().transpose() * sr -> lactive().topRows(nsites-1);
+  m_ac = sl -> lactive().transpose() * sr -> lcore().topRows(nsites-1);
+  m_aa = sl -> lactive().transpose() * sr -> lactive().topRows(nsites-1);
+  m_sa = sr -> lactive().row(nsites-1);
 
   build_cc_block(sl, sr);
 }
@@ -212,14 +213,15 @@ Overlap_Slater_Right::Overlap_Slater_Right(boost::shared_ptr<SchmidtBasis> sl, b
   lactive_b = total_b - lcore; // b electrons in left_basis active space
   ractive_a = (nsites-1-qr)/2 - rcore; // a electrons in right_basis active space
   ractive_b = (nsites-1+qr)/2 - rcore; // a electrons in right_basis active space
-  work_a.ReSize(total_a, total_a);
-  work_b.ReSize(total_b, total_b);
-  work_a = 0; work_b = 0;
+  work_a.resize(total_a, total_a);
+  work_b.resize(total_b, total_b);
+  work_a.setZero();
+  work_b.setZero();
 
-  m_ca = sr -> rcore().t() * sl -> ractive().Rows(2, nsites);
-  m_ac = sr -> ractive().t() * sl -> rcore().Rows(2, nsites);
-  m_aa = sr -> ractive().t() * sl -> ractive().Rows(2, nsites);
-  m_sa = sl -> ractive().Row(1);
+  m_ca = sr -> rcore().transpose() * sl -> ractive().bottomRows(nsites-1);
+  m_ac = sr -> ractive().transpose() * sl -> rcore().bottomRows(nsites-1);
+  m_aa = sr -> ractive().transpose() * sl -> ractive().bottomRows(nsites-1);
+  m_sa = sl -> ractive().row(0);
 
   build_cc_block(sl, sr);
 }
@@ -229,15 +231,15 @@ void Overlap_Slater_Left::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boo
   if (total_a - lactive_a > total_b - lactive_b) { // the state on this site is up
     this_site_up = true;
     parity = ((total_a + total_b) % 2 == 1) ? 1 : -1;
-    work_a.SubMatrix(1, 1, 1, rcore) = sr -> lcore().Row(nsites);
-    work_a.SubMatrix(2, lcore+1, 1, rcore) = sl -> lcore().t() * sr -> lcore().Rows(1, nsites-1);
-    work_b.SubMatrix(1, lcore, 1, rcore) = sl -> lcore().t() * sr -> lcore().Rows(1, nsites-1);
+    work_a.topLeftCorner(1,rcore) = sr->lcore().row(nsites-1);
+    work_a.block(1, 0, lcore, rcore) = sl->lcore().transpose() * sr->lcore().topRows(nsites-1);
+    work_b.topLeftCorner(lcore, rcore) = sl->lcore().transpose() * sr->lcore().topRows(nsites-1);
   } else {
     this_site_up = false;
     parity = (total_b % 2 == 1) ? 1 : -1;
-    work_b.SubMatrix(1, 1, 1, rcore) = sr -> lcore().Row(nsites);
-    work_b.SubMatrix(2, lcore+1, 1, rcore) = sl -> lcore().t() * sr -> lcore().Rows(1, nsites-1);
-    work_a.SubMatrix(1, lcore, 1, rcore) = sl -> lcore().t() * sr -> lcore().Rows(1, nsites-1);
+    work_b.topLeftCorner(1, rcore) = sr->lcore().row(nsites-1);
+    work_b.block(1, 0, lcore, rcore) = sl->lcore().transpose() * sr->lcore().topRows(nsites-1);
+    work_a.topLeftCorner(lcore, rcore) = sl->lcore().transpose() * sr->lcore().topRows(nsites-1);
   }
 }
 
@@ -246,44 +248,44 @@ void Overlap_Slater_Right::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, bo
   if (total_a - ractive_a > total_b - ractive_b) { // the state on this site is up
     this_site_up = true;
     parity = 1;
-    work_a.SubMatrix(1, 1, 1, lcore) = sl -> rcore().Row(1);
-    work_a.SubMatrix(2, rcore+1, 1, lcore) = sr -> rcore().t() * sl -> rcore().Rows(2, nsites);
-    work_b.SubMatrix(1, rcore, 1, lcore) = sr -> rcore().t() * sl -> rcore().Rows(2, nsites);
+    work_a.topLeftCorner(1, lcore) = sl->rcore().row(0);
+    work_a.block(1, 0, rcore, lcore) = sr->rcore().transpose() * sl->rcore().bottomRows(nsites-1);
+    work_b.topLeftCorner(rcore, lcore) = sr -> rcore().transpose() * sl -> rcore().bottomRows(nsites-1);
   } else {
     this_site_up = false;
     parity = (total_a % 2 == 0) ? 1 : -1;
-    work_b.SubMatrix(1, 1, 1, lcore) = sl -> rcore().Row(1);
-    work_b.SubMatrix(2, rcore+1, 1, lcore) = sr -> rcore().t() * sl -> rcore().Rows(2, nsites);
-    work_a.SubMatrix(1, rcore, 1, lcore) = sr -> rcore().t() * sl -> rcore().Rows(2, nsites);
+    work_b.topLeftCorner(1, lcore) = sl->rcore().row(0);
+    work_b.block(1, 0, rcore, lcore) = sr->rcore().transpose() * sl->rcore().bottomRows(nsites-1);
+    work_a.topLeftCorner(rcore, lcore) = sr->rcore().transpose() * sl->rcore().bottomRows(nsites-1);
   }
 }
 
-double Overlap_Slater::operator() (const vector<bool>& c1, const vector<bool>& c2) {
+dtype Overlap_Slater::operator() (const vector<bool>& c1, const vector<bool>& c2) {
   build_ac_block(c1, c2);
   build_ca_block(c1, c2);
   build_aa_block(c1, c2);
 
-  double detA = (total_a == 0) ? 1. : work_a.Determinant();
-  double detB = (total_b == 0) ? 1. : work_b.Determinant();
+  dtype detA = (total_a == 0) ? 1. : work_a.determinant();
+  dtype detB = (total_b == 0) ? 1. : work_b.determinant();
  
   return parity * detA * detB;
 }
 
 void Overlap_Slater_Left::build_ac_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (lactive_a) { // ac block in alpha spin
-    int shift = this_site_up ? lcore+2:lcore+1, count = 0;
+    int shift = this_site_up ? lcore+1:lcore, count = 0;
     for (int i = 0; i < lactive_size; ++i) {
       if (c1[i]) {
-        work_a.SubMatrix(shift+count, shift+count, 1, rcore) = m_ac.Row(i+1);
-        ++count;        
+        work_a.block(shift+count, 0, 1, rcore) = m_ac.row(i);
+        ++count;
       }
     }
   }
   if (lactive_b) { // ac block in beta spin
-    int shift = this_site_up ? lcore+1:lcore+2, count = 0;
+    int shift = this_site_up ? lcore:lcore+1, count = 0;
     for (int i = 0; i < lactive_size; ++i) { // for beta spin
       if (c1[i+lactive_size]) {
-        work_b.SubMatrix(shift+count, shift+count, 1, rcore) = m_ac.Row(i+1);
+        work_b.block(shift+count, 0, 1, rcore) = m_ac.row(i);
         ++count;        
       }
     }
@@ -292,19 +294,19 @@ void Overlap_Slater_Left::build_ac_block(const vector<bool>& c1, const vector<bo
 
 void Overlap_Slater_Right::build_ac_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (ractive_a) { // ac block of spin alpha
-    int shift = this_site_up ? rcore+2:rcore+1, count = 0;
+    int shift = this_site_up ? rcore+1:rcore, count = 0;
     for (int i = 0; i < ractive_size; ++i) {
       if (c2[i]) {
-        work_a.SubMatrix(shift+count, shift+count, 1, lcore) = m_ac.Row(i+1);
+        work_a.block(shift+count, 0, 1, lcore) = m_ac.row(i);
         ++count;
       }
     }
   }
   if (ractive_b) { // ac block of spin beta
-    int shift = this_site_up ? rcore+1:rcore+2, count = 0;
+    int shift = this_site_up ? rcore:rcore+1, count = 0;
     for (int i = 0; i < ractive_size; ++i) {
       if (c2[i+ractive_size]) {
-        work_b.SubMatrix(shift+count, shift+count, 1, lcore) = m_ac.Row(i+1);
+        work_b.block(shift+count, 0, 1, lcore) = m_ac.row(i);
         ++count;
       }
     }
@@ -318,10 +320,10 @@ void Overlap_Slater_Left::build_ca_block(const vector<bool>& c1, const vector<bo
     for (int i = 0; i < ractive_size; ++i) {
       if (c2[i]) {
         if (this_site_up) {
-          work_a(1, rcore+count+1) = m_sa(1, i+1);
-          work_a.SubMatrix(2, lcore+1, rcore+count+1, rcore+count+1) = m_ca.Column(i+1);          
+          work_a(0, rcore+count) = m_sa(0, i);
+          work_a.col(rcore+count).segment(1, lcore) = m_ca.col(i);
         } else {
-          work_a.SubMatrix(1, lcore, rcore+count+1, rcore+count+1) = m_ca.Column(i+1); 
+          work_a.col(rcore+count).head(lcore) = m_ca.col(i);
         }
         ++count;
       }
@@ -332,10 +334,10 @@ void Overlap_Slater_Left::build_ca_block(const vector<bool>& c1, const vector<bo
     for (int i = 0; i < ractive_size; ++i) {
       if (c2[i+ractive_size]) {
         if (this_site_up) {
-          work_b.SubMatrix(1, lcore, rcore+count+1, rcore+count+1) = m_ca.Column(i+1);
+          work_b.col(rcore+count).head(lcore) = m_ca.col(i);
         } else {
-          work_b(1, rcore+count+1) = m_sa(1, i+1);
-          work_b.SubMatrix(2, lcore+1, rcore+count+1, rcore+count+1) = m_ca.Column(i+1);
+          work_b(0, rcore+count) = m_sa(0, i);
+          work_b.col(rcore+count).segment(1, lcore) = m_ca.col(i);
         }
         ++count;
       }
@@ -349,10 +351,10 @@ void Overlap_Slater_Right::build_ca_block(const vector<bool>& c1, const vector<b
     for (int i = 0; i < lactive_size; ++i) {
       if (c1[i]) {
         if (this_site_up) {
-          work_a(1, lcore+count+1) = m_sa(1, i+1);
-          work_a.SubMatrix(2, rcore+1, lcore+count+1, lcore+count+1) = m_ca.Column(i+1);
+          work_a(0, lcore+count) = m_sa(0, i);
+          work_a.col(lcore+count).segment(1, rcore) = m_ca.col(i);
         } else {
-          work_a.SubMatrix(1, rcore, lcore+count+1, lcore+count+1) = m_ca.Column(i+1);
+          work_a.col(lcore+count).head(rcore) = m_ca.col(i);
         }
         ++count;
       }
@@ -363,10 +365,10 @@ void Overlap_Slater_Right::build_ca_block(const vector<bool>& c1, const vector<b
     for (int i = 0; i < lactive_size; ++i) {
       if (c1[i+lactive_size]) {
         if (this_site_up) {
-          work_b.SubMatrix(1, rcore, lcore+count+1, lcore+count+1) = m_ca.Column(i+1);
+          work_b.col(lcore+count).head(rcore) = m_ca.col(i);
         } else {
-          work_b(1, lcore+count+1) = m_sa(1, i+1);
-          work_b.SubMatrix(2, rcore+1, lcore+count+1, lcore+count+1) = m_ca.Column(i+1);
+          work_b(0, lcore+count) = m_sa(0, i);
+          work_b.col(lcore+count).segment(1, rcore) = m_ca.col(i);
         }
         ++count;
       }
@@ -376,13 +378,13 @@ void Overlap_Slater_Right::build_ca_block(const vector<bool>& c1, const vector<b
 
 void Overlap_Slater_Left::build_aa_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (lactive_a && ractive_a) { // aa block in alpha spin
-    int shift = this_site_up ? lcore+2:lcore+1, count_l = 0;
+    int shift = this_site_up ? lcore+1:lcore, count_l = 0;
     for (int i = 0; i < lactive_size; ++i) {
       if (c1[i]) {
         int count_r = 0;
         for (int j = 0; j < ractive_size; ++j) {
           if (c2[j]) {
-            work_a(shift+count_l, rcore+count_r+1) = m_aa(i+1, j+1);
+            work_a(shift+count_l, rcore+count_r) = m_aa(i, j);
             ++count_r;
           }
         }
@@ -392,13 +394,13 @@ void Overlap_Slater_Left::build_aa_block(const vector<bool>& c1, const vector<bo
   }
 
   if (lactive_b && ractive_b) {
-    int shift = this_site_up ? lcore+1:lcore+2, count_l = 0;
+    int shift = this_site_up ? lcore:lcore+1, count_l = 0;
     for (int i = 0; i < lactive_size; ++i) {
       if (c1[i+lactive_size]) {
         int count_r = 0;
         for (int j = 0; j < ractive_size; ++j) {
           if (c2[j+ractive_size]) {
-            work_b(shift+count_l, rcore+count_r+1) = m_aa(i+1, j+1);
+            work_b(shift+count_l, rcore+count_r) = m_aa(i, j);
             ++count_r;
           }
         }
@@ -410,13 +412,13 @@ void Overlap_Slater_Left::build_aa_block(const vector<bool>& c1, const vector<bo
 
 void Overlap_Slater_Right::build_aa_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (lactive_a && ractive_a) { // aa block in alpha spin
-    int shift = this_site_up ? rcore+2 : rcore+1, count_r = 0;
+    int shift = this_site_up ? rcore+1 : rcore, count_r = 0;
     for (int i = 0; i < ractive_size; ++i) {
       if (c2[i]) {
         int count_l = 0;
         for (int j = 0; j < lactive_size; ++j) {
           if (c1[j]) {
-            work_a(shift+count_r, lcore+count_l+1) = m_aa(i+1, j+1);
+            work_a(shift+count_r, lcore+count_l) = m_aa(i, j);
             ++count_l;
           }
         }
@@ -425,13 +427,13 @@ void Overlap_Slater_Right::build_aa_block(const vector<bool>& c1, const vector<b
     }
   }
   if (lactive_b && ractive_b) {
-    int shift = this_site_up ? rcore+1 : rcore+2, count_r = 0;
+    int shift = this_site_up ? rcore : rcore+1, count_r = 0;
     for (int i = 0; i < ractive_size; ++i) {
       if (c2[i+ractive_size]) {
         int count_l = 0;
         for (int j = 0; j < lactive_size; ++j) {
           if (c1[j+lactive_size]) {
-            work_b(shift+count_r, lcore+count_l+1) = m_aa(i+1, j+1);
+            work_b(shift+count_r, lcore+count_l) = m_aa(i, j);
             ++count_l;
           }
         }
@@ -455,13 +457,20 @@ Overlap_BCS_Left::Overlap_BCS_Left(boost::shared_ptr<SchmidtBasis> sl, boost::sh
   lactive = ql + (nsites-1) - lcore;
   ractive = ntotal - rcore;
 
-  work.ReSize(ntotal, ntotal);
-  work = 0;
+  work.resize(ntotal, ntotal);
+  work.setZero();
 
-  m_ca = sl -> lcore().t() * (sr -> lactive().Rows(1, nsites-1) & sr -> lactive().Rows(nsites+1, 2*nsites-1));
-  m_ac = sl -> lactive().t() * (sr -> lcore().Rows(1, nsites-1) & sr -> lcore().Rows(nsites+1, 2*nsites-1));
-  m_aa = sl -> lactive().t() * (sr -> lactive().Rows(1, nsites-1) & sr -> lactive().Rows(nsites+1, 2*nsites-1));
-  m_sa = sr -> lactive().Row(2*nsites) & sr -> lactive().Row(nsites);
+  m_ca = sl->lcore().topRows(nsites-1).transpose() * sr->lactive().topRows(nsites-1) +
+      sl->lcore().bottomRows(nsites-1).transpose() * sr->lactive().bottomRows(nsites).topRows(nsites-1);
+  m_ac = sl->lactive().topRows(nsites-1).transpose() * sr->lcore().topRows(nsites-1) +
+      sl->lactive().bottomRows(nsites-1).transpose() * sr->lcore().bottomRows(nsites).topRows(nsites-1);
+  m_aa = sl->lactive().topRows(nsites-1).transpose() * sr->lactive().topRows(nsites-1) +
+      sl->lactive().bottomRows(nsites-1).transpose() * sr->lactive().bottomRows(nsites).topRows(nsites-1);
+
+  m_sa.resize(2, ractive_size);
+  m_sa.row(0) = sr->lactive().row(2*nsites-1);
+  m_sa.row(1) = sr->lactive().row(nsites-1);
+
   build_cc_block(sl, sr);
 }
 
@@ -475,13 +484,19 @@ Overlap_BCS_Right::Overlap_BCS_Right(boost::shared_ptr<SchmidtBasis> sl, boost::
   lactive = ntotal - lcore;
   ractive = -qr + (nsites-1) - rcore;
 
-  work.ReSize(ntotal, ntotal);
-  work = 0;
+  work.resize(ntotal, ntotal);
+  work.setZero();
 
-  m_ca = sr -> rcore().t() * (sl -> ractive().Rows(2, nsites) & sl -> ractive().Rows(nsites+2, 2*nsites));
-  m_ac = sr -> ractive().t() * (sl -> rcore().Rows(2, nsites) & sl -> rcore().Rows(nsites+2, 2*nsites));
-  m_aa = sr -> ractive().t() * (sl -> ractive().Rows(2, nsites) & sl -> ractive().Rows(nsites+2, 2*nsites));
-  m_sa = sl -> ractive().Row(nsites+1) & sl -> ractive().Row(1);
+  m_ca = sr->rcore().topRows(nsites-1).transpose() * sl->ractive().topRows(nsites).bottomRows(nsites-1) + 
+     sr->rcore().bottomRows(nsites-1).transpose() * sl->ractive().bottomRows(nsites-1);
+  m_ac = sr->ractive().topRows(nsites-1).transpose() * sl->rcore().topRows(nsites).bottomRows(nsites-1) + 
+     sr->ractive().bottomRows(nsites-1).transpose() * sl->rcore().bottomRows(nsites-1);
+  m_aa = sr->ractive().topRows(nsites-1).transpose() * sl->ractive().topRows(nsites).bottomRows(nsites-1) + 
+     sr->ractive().bottomRows(nsites-1).transpose() * sl->ractive().bottomRows(nsites-1);
+  
+  m_sa.resize(2, lactive_size);
+  m_sa.row(0) = sl->ractive().row(nsites);
+  m_sa.row(1) = sl->ractive().row(0);
   
   build_cc_block(sl, sr);
 }
@@ -491,12 +506,15 @@ void Overlap_BCS_Left::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boost:
   if (ntotal > lcore + lactive) { // then this site is spin up
     this_site_up = true;
     parity = 1;
-    work.SubMatrix(1, 2, 1, rcore) = sr -> lcore().Row(2*nsites) & sr -> lcore().Row(nsites);
-    work.SubMatrix(3, lcore + 2, 1, rcore) = sl -> lcore().t() * (sr -> lcore().Rows(1, nsites-1) & sr -> lcore().Rows(nsites+1, 2*nsites-1));
+    work.row(0).head(rcore) = sr->lcore().row(2*nsites-1);
+    work.row(1).head(rcore) = sr->lcore().row(nsites-1);
+    work.block(2, 0, lcore, rcore) = sl->lcore().topRows(nsites-1).transpose() * sr->lcore().topRows(nsites-1) +
+        sl->lcore().bottomRows(nsites-1).transpose() * sr->lcore().bottomRows(nsites).topRows(nsites-1);
   } else {
     this_site_up = false;
     parity = 1;
-    work.SubMatrix(1, lcore, 1, rcore) = sl -> lcore().t() * (sr -> lcore().Rows(1, nsites-1) & sr -> lcore().Rows(nsites+1, 2*nsites-1));
+    work.topLeftCorner(lcore, rcore) = sl->lcore().topRows(nsites-1).transpose() * sr->lcore().topRows(nsites-1) +
+        sl->lcore().bottomRows(nsites-1).transpose() * sr->lcore().bottomRows(nsites).topRows(nsites-1);
   }
 }
 
@@ -505,30 +523,33 @@ void Overlap_BCS_Right::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boost
   if (ntotal > rcore + ractive) { // then this site is spin up
     this_site_up = true;
     parity = 1;
-    work.SubMatrix(1, 2, 1, lcore) = sl -> rcore().Row(nsites+1) & sl -> rcore().Row(1);
-    work.SubMatrix(3, rcore + 2, 1, lcore) = sr -> rcore().t() * (sl -> rcore().Rows(2, nsites) & sl -> rcore().Rows(nsites+2, 2*nsites));
+    work.row(0).head(lcore) = sl->rcore().row(nsites);
+    work.row(1).head(lcore) = sl->rcore().row(0);
+    work.block(2, 0, rcore, lcore) = sr->rcore().topRows(nsites-1).transpose() * sl->rcore().topRows(nsites).bottomRows(nsites-1) +
+        sr->rcore().bottomRows(nsites-1).transpose() * sl->rcore().bottomRows(nsites-1);
   } else {
     this_site_up = false;
     parity = 1;
-    work.SubMatrix(1, rcore, 1, lcore) = sr -> rcore().t() * (sl -> rcore().Rows(2, nsites) & sl -> rcore().Rows(nsites+2, 2*nsites));
+    work.topLeftCorner(rcore, lcore) = sr->rcore().topRows(nsites-1).transpose() * sl->rcore().topRows(nsites).bottomRows(nsites-1) +
+        sr->rcore().bottomRows(nsites-1).transpose() * sl->rcore().bottomRows(nsites-1);
   }
 }
 
-double Overlap_BCS::operator() (const vector<bool>& c1, const vector<bool>& c2) {
+dtype Overlap_BCS::operator() (const vector<bool>& c1, const vector<bool>& c2) {
   build_ac_block(c1, c2);
   build_ca_block(c1, c2);
   build_aa_block(c1, c2);
   
-  double det = (ntotal == 0) ? 1. : work.Determinant();
+  dtype det = (ntotal == 0) ? 1. : work.determinant();
   return parity * det;
 }
 
 void Overlap_BCS_Left::build_ac_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (lactive) {
-    int shift = this_site_up ? lcore+3 : lcore+1, count = 0;
+    int shift = this_site_up ? lcore+2 : lcore, count = 0;
     for (int i = 0; i < lactive_size; ++i) {
       if (c1[i]) {
-        work.SubMatrix(shift+count, shift+count, 1, rcore) = m_ac.Row(i+1);
+        work.row(shift+count).head(rcore) = m_ac.row(i);
         ++count;
       }
     }
@@ -537,10 +558,10 @@ void Overlap_BCS_Left::build_ac_block(const vector<bool>& c1, const vector<bool>
 
 void Overlap_BCS_Right::build_ac_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (ractive) {
-    int shift = this_site_up ? rcore+3 : rcore+1, count = 0;
+    int shift = this_site_up ? rcore+2 : rcore, count = 0;
     for (int i = 0; i < ractive_size; ++i) {
       if (c2[i]) {
-        work.SubMatrix(shift+count, shift+count, 1, lcore) = m_ac.Row(i+1);
+        work.row(shift+count).head(lcore) = m_ac.row(i);
         ++count;
       }
     }
@@ -553,9 +574,10 @@ void Overlap_BCS_Left::build_ca_block(const vector<bool>& c1, const vector<bool>
     for (int i = 0; i < ractive_size; ++i) {
       if (c2[i]) {
         if (this_site_up) {
-          work.SubMatrix(1, lcore+2, rcore+count+1, rcore+count+1) = m_sa.Column(i+1) & m_ca.Column(i+1);
+          work.col(rcore+count).head(2) = m_sa.col(i);
+          work.col(rcore+count).segment(2, lcore) = m_ca.col(i);
         } else {
-          work.SubMatrix(1, lcore, rcore+count+1, rcore+count+1) = m_ca.Column(i+1);
+          work.col(rcore+count).head(lcore) = m_ca.col(i);
         }
         ++count;
       }
@@ -569,9 +591,10 @@ void Overlap_BCS_Right::build_ca_block(const vector<bool>& c1, const vector<bool
     for (int i = 0; i < lactive_size; ++i) {
       if (c1[i]) {
         if (this_site_up) {
-          work.SubMatrix(1, rcore+2, lcore+count+1, lcore+count+1) = m_sa.Column(i+1) & m_ca.Column(i+1);
+          work.col(lcore+count).head(2) = m_sa.col(i);
+          work.col(lcore+count).segment(2, rcore) = m_ca.col(i);
         } else {
-          work.SubMatrix(1, rcore, lcore+count+1, lcore+count+1) = m_ca.Column(i+1);
+          work.col(lcore+count).head(rcore) = m_ca.col(i);
         }
         ++count;
       }
@@ -581,13 +604,13 @@ void Overlap_BCS_Right::build_ca_block(const vector<bool>& c1, const vector<bool
 
 void Overlap_BCS_Left::build_aa_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (lactive && ractive) {
-    int shift = this_site_up ? lcore+3 : lcore+1, count_l = 0;
+    int shift = this_site_up ? lcore+2 : lcore, count_l = 0;
     for (int i = 0; i < lactive_size; ++i) {
       if (c1[i]) {
         int count_r = 0;
         for (int j = 0; j < ractive_size; ++j) {
           if (c2[j]) {
-            work(shift+count_l, rcore+count_r+1) = m_aa(i+1, j+1);
+            work(shift+count_l, rcore+count_r) = m_aa(i, j);
             ++count_r;
           }
         }
@@ -599,13 +622,13 @@ void Overlap_BCS_Left::build_aa_block(const vector<bool>& c1, const vector<bool>
 
 void Overlap_BCS_Right::build_aa_block(const vector<bool>& c1, const vector<bool>& c2) {
   if (lactive && ractive) {
-    int shift = this_site_up ? rcore+3 : rcore+1, count_r = 0;
+    int shift = this_site_up ? rcore+2 : rcore, count_r = 0;
     for (int i = 0; i < ractive_size; ++i) {
       if (c2[i]) {
         int count_l = 0;
         for (int j = 0; j < lactive_size; ++j) {
           if (c1[j]) {
-            work(shift+count_r, lcore+count_l+1) = m_aa(i+1, j+1);
+            work(shift+count_r, lcore+count_l) = m_aa(i, j);
             ++count_l;
           }
         }

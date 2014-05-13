@@ -39,7 +39,7 @@ void load_site(MPS<dtype, Quantum>& mps, int site ,const char *filename){
   load_site(mps[site], site, filename);
 }
 
-double norm_on_disk(const char* filename, int size) {
+d_real norm_on_disk(const char* filename, int size) {
   QSTArray<dtype, 2, Quantum> E;
   MPS<dtype, Quantum> mps(size);
   load_site(mps, 0, filename);
@@ -67,10 +67,10 @@ double norm_on_disk(const char* filename, int size) {
 
 
 void normalize_on_disk(const char* filename, int size, int site) {
-  double norm = norm_on_disk(filename, size);
+  d_real norm = norm_on_disk(filename, size);
   MPS<dtype, Quantum> mps(size);  
   if (site < 0) {
-    double alpha = pow(1./norm, 1./(double)size);
+    d_real alpha = pow(1./norm, 1./(d_real)size);
     for (int i = 0; i < size; ++i) {
       load_site(mps, i, filename);
       Scal(alpha, mps[i]);
@@ -95,7 +95,6 @@ void check_existence(int i, const char* filename) {
 }
 
 typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION& dir, int D, const char* filename, int first, int last) {
-  typedef typename remove_complex<dtype>::type d_real;
   d_real dweight = 0.0;
 
   MPS<dtype, Quantum> mps(L);
@@ -113,7 +112,7 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
     // note this is not complete, the sites on the left are not affected
     // need final renormalization
     dtype nrm = sqrt(Dotc(mps[first],mps[first]));
-    acc_norm *= pow(nrm, 1./(double)L);
+    acc_norm *= pow(nrm, 1./(d_real)L);
     Scal(acc_norm / nrm, mps[first]);
     
     for (int i = first; i < last; ++i) {
@@ -136,7 +135,7 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
       mps[i + 1].clear();
       Contract((dtype)1.0,V,shape(1),U,shape(0),(dtype)0.0,mps[i + 1]);
       dtype nrm = sqrt(Dotc(mps[i+1],mps[i+1]));
-      acc_norm *= pow(nrm, 1./(double)L);
+      acc_norm *= pow(nrm, 1./(d_real)L);
       Scal(acc_norm / nrm, mps[i+1]);
     }
     printf("site %3d not compressed\n", last);
@@ -151,7 +150,7 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
     printf("site %3d before compress %12d\n", first, mps_size(mps[first]));
     //redistribute the norm over the chain: for stability reasons
     dtype nrm = sqrt(Dotc(mps[first],mps[first]));
-    acc_norm *= pow(nrm, 1./(double)L);
+    acc_norm *= pow(nrm, 1./(d_real)L);
     Scal(acc_norm/nrm,mps[first]);
 
     for(int i = first;i > last;--i){
@@ -174,7 +173,7 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
       Contract((dtype)1.0,V,shape(2),U,shape(0),(dtype)0.0,mps[i - 1]);
 
       dtype nrm = sqrt(Dotc(mps[i-1],mps[i-1]));
-      acc_norm *= pow(nrm, 1./(double)L);
+      acc_norm *= pow(nrm, 1./(d_real)L);
       Scal(acc_norm/nrm,mps[i-1]);
     }
     printf("site %3d not compressed\n", last);
@@ -186,7 +185,6 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
 
 typename remove_complex<dtype>::type compress_on_disk(int L,const MPS_DIRECTION &dir,int D, const char *filename, bool store, bool incomp){
 
-  typedef typename remove_complex<dtype>::type d_real;
   d_real dweight = 0.0;
 
   MPS<dtype, Quantum> mps(L);
@@ -204,7 +202,7 @@ typename remove_complex<dtype>::type compress_on_disk(int L,const MPS_DIRECTION 
       // note this is not complete, the sites on the left are not affected
       // need final renormalization
       dtype nrm = sqrt(Dotc(mps[i],mps[i]));
-      acc_norm *= pow(nrm, 1./(double)L);
+      acc_norm *= pow(nrm, 1./(d_real)L);
       Scal(acc_norm / nrm, mps[i]);
       
       //then svd
@@ -230,7 +228,7 @@ typename remove_complex<dtype>::type compress_on_disk(int L,const MPS_DIRECTION 
       Contract((dtype)1.0,V,shape(1),U,shape(0),(dtype)0.0,mps[i + 1]);
     }
     dtype nrm = sqrt(Dotc(mps[L-1],mps[L-1]));
-    acc_norm *= pow(nrm, 1./(double)L);
+    acc_norm *= pow(nrm, 1./(d_real)L);
     Scal(acc_norm/nrm,mps[L-1]);
     cout << "site " << L-1 << " after compress  " << mps_size(mps[L-1]) << endl;      
     if (store) {
@@ -247,7 +245,7 @@ typename remove_complex<dtype>::type compress_on_disk(int L,const MPS_DIRECTION 
     for(int i = L - 1;i > 0;--i){
       //redistribute the norm over the chain: for stability reasons
       dtype nrm = sqrt(Dotc(mps[i],mps[i]));
-      acc_norm *= pow(nrm, 1./(double)L);      
+      acc_norm *= pow(nrm, 1./(d_real)L);      
       Scal(acc_norm/nrm,mps[i]);
       //then SVD: 
       dweight += Gesvd<dtype, 3, 2, Quantum, btas::RightArrow>(mps[i],S,U,V,D);
@@ -273,7 +271,7 @@ typename remove_complex<dtype>::type compress_on_disk(int L,const MPS_DIRECTION 
       Contract((dtype)1.0,V,shape(2),U,shape(0),(dtype)0.0,mps[i - 1]);
     }
     dtype nrm = sqrt(Dotc(mps[0],mps[0]));
-    acc_norm *= pow(nrm, 1./(double)L);    
+    acc_norm *= pow(nrm, 1./(d_real)L);    
     Scal(acc_norm/nrm,mps[0]);
     cout << "site " << 0 << " after compress  " << mps_size(mps[0]) << endl;      
     if (store) {
@@ -291,7 +289,6 @@ typename remove_complex<dtype>::type compress_on_disk(int L,const MPS_DIRECTION 
 
 // process entaglement spectra
 void spectra(const tuple<STArray<typename remove_complex<dtype>::type, 1> , Qshapes<Quantum>>& raw) {
-  typedef typename remove_complex<dtype>::type d_real;
   STArray<d_real, 1> sc = std::get<0>(raw);
   Qshapes<Quantum> sq = std::get<1>(raw);
 
@@ -325,9 +322,8 @@ void spectra(const tuple<STArray<typename remove_complex<dtype>::type, 1> , Qsha
 }
 
 tuple<STArray<typename remove_complex<dtype>::type, 1>, Qshapes<Quantum>> Schmidt_on_disk(int L, int site, const char* filename, int lc, int rc) {
-  typedef typename remove_complex<dtype>::type d_real;
   MPS<dtype, Quantum> mps(L);
-  vector<double> coef;
+  vector<d_real> coef;
   if (lc < 0) {
     lc = 0;
   }

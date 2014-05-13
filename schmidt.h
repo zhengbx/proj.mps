@@ -19,8 +19,8 @@ protected:
   int quantum, nsize;
   const SchmidtBasis* basis;
   vector<vector<bool>> l_list, r_list;
-  vector<double> npweight;
-  vector<double> weight;
+  vector<d_real> npweight;
+  vector<d_real> weight;
 
   friend class boost::serialization::access;
   ActiveSpaceIterator() {}  
@@ -38,9 +38,9 @@ public:
   }
   int size() const {  return l_list.size();}
   vector<bool> get_config(const int& i, bool left = true) const {  
-    return std::move(left ? l_list[i]: r_list[i]);
+    return left ? l_list[i]: r_list[i];
   }
-  double get_schmidt_coef(const int& i) const {
+  d_real get_schmidt_coef(const int& i) const {
     return sqrt(npweight[i]);
   }
   virtual vector<int> occs() const = 0;
@@ -90,7 +90,7 @@ protected:
   int m_lsites, m_rsites;
   int m_nlc, m_nrc, m_na;
   Matrix m_lc, m_rc, m_la, m_ra;
-  vector<double> m_lweight, m_rweight;
+  vector<d_real> m_lweight, m_rweight;
   vector<int> quantums, dims;
   map<int, boost::shared_ptr<ActiveSpaceIterator>> m_it;
 
@@ -116,9 +116,9 @@ protected:
   }
 public:
   SchmidtBasis(const Matrix& lcore, const Matrix& rcore, const Matrix& lactive, 
-      const Matrix& ractive, const vector<double>& lweight): m_lc(lcore), m_rc(rcore), 
-      m_la(lactive), m_ra(ractive), m_lweight(lweight), m_nlc(lcore.Ncols()),
-      m_nrc(rcore.Ncols()), m_na(lactive.Ncols()) {
+      const Matrix& ractive, const vector<d_real>& lweight): m_lc(lcore), m_rc(rcore), 
+      m_la(lactive), m_ra(ractive), m_lweight(lweight), m_nlc(lcore.cols()),
+      m_nrc(rcore.cols()), m_na(lactive.cols()) {
     m_rweight.resize(m_na);
     for (int i = 0; i < m_na; ++i) {
       m_rweight[i] = 1. - m_lweight[i];
@@ -133,15 +133,15 @@ public:
 
   int nactive() const {  return m_na;};
 
-  Matrix lcore() const {  return std::move(m_lc);};
-  Matrix rcore() const {  return std::move(m_rc);};
-  Matrix lactive() const {  return std::move(m_la);};
-  Matrix ractive() const {  return std::move(m_ra);};
+  const Matrix& lcore() const {  return m_lc;};
+  const Matrix& rcore() const {  return m_rc;};
+  const Matrix& lactive() const {  return m_la;};
+  const Matrix& ractive() const {  return m_ra;};
 
-  const vector<int> get_q() const {  return std::move(quantums);}
-  const vector<int> get_d() const {  return std::move(dims);}
+  const vector<int>& get_q() const {  return quantums;}
+  const vector<int>& get_d() const {  return dims;}
 
-  vector<double> lweight() const {
+  vector<d_real> lweight() const {
     return std::move(m_lweight);
   }
 
@@ -158,10 +158,10 @@ protected:
   }
 public:
   SchmidtBasis_Slater(const Matrix& lcore, const Matrix& rcore, const Matrix& lactive, 
-      const Matrix& ractive, const vector<double>& lweight): SchmidtBasis(lcore, rcore, 
+      const Matrix& ractive, const vector<d_real>& lweight): SchmidtBasis(lcore, rcore, 
         lactive, ractive, lweight) {
-    m_lsites = lcore.Nrows();
-    m_rsites = rcore.Nrows();
+    m_lsites = lcore.rows();
+    m_rsites = rcore.rows();
     calc_q();
     calc_dim();
   }
@@ -177,10 +177,10 @@ protected:
   }
 public:
   SchmidtBasis_BCS(const Matrix& lcore, const Matrix& rcore, const Matrix& lactive, 
-      const Matrix& ractive, const vector<double>& lweight): SchmidtBasis(lcore, rcore, 
+      const Matrix& ractive, const vector<d_real>& lweight): SchmidtBasis(lcore, rcore, 
         lactive, ractive, lweight) {
-    m_lsites = lcore.Nrows()/2;
-    m_rsites = rcore.Nrows()/2;
+    m_lsites = lcore.rows()/2;
+    m_rsites = rcore.rows()/2;
     calc_q();
     calc_dim();
   }

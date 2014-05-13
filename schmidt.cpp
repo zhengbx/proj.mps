@@ -48,46 +48,46 @@ size_t bit2idx(const vector<bool>& bit) {
   return idx;
 }
 
-double weight_bound(const vector<double>& w, int n) {
-  vector<double> temp(w);
+d_real weight_bound(const vector<d_real>& w, int n) {
+  vector<d_real> temp(w);
   std::sort(temp.begin(), temp.end());
-  double max = 1.;
+  d_real max = 1.;
   for (int i = 0; i < temp.size(); ++i) {
     max *= (i < temp.size()-n) ? (1.-temp[i]) : temp[i];
   }
   return max;
 }
 
-map<vector<bool>, double> simple_combinations(const vector<double>& w, int n, double thr) {
+map<vector<bool>, d_real> simple_combinations(const vector<d_real>& w, int n, d_real thr) {
   // simple function to calculate combination weight, keep only the ones larger than threshold
   int nsize = w.size();
   size_t max = choose(nsize, n);
-  map<vector<bool>, double> wtable;
+  map<vector<bool>, d_real> wtable;
 
   for (size_t i = 0; i < max; ++i) {
     auto bits = idx2bit(i, nsize, n);
-    double weight = 1.;
+    d_real weight = 1.;
     for (int j = 0; j < nsize; ++j) {
       weight *= bits[j] ? w[j] : (1-w[j]);
     }
     if (weight > thr) {
-      wtable.insert(std::pair<vector<bool>, double>(bits, weight));
+      wtable.insert(std::pair<vector<bool>, d_real>(bits, weight));
     }
   }
   return wtable;
 }
 
-map<vector<bool>, double> combinations(const vector<double>& w, int n, double thr) {
+map<vector<bool>, d_real> combinations(const vector<d_real>& w, int n, d_real thr) {
   if (weight_bound(w, n) < thr) {
-    map<vector<bool>, double> wtable;
+    map<vector<bool>, d_real> wtable;
     return wtable;
   }
   
   if (choose(w.size(), n) < 10000) {
     return simple_combinations(w, n, thr);
   } else { // if too big, use recursion method to compute
-    vector<double> w1, w2;
-    map<vector<bool>, double> wtable;    
+    vector<d_real> w1, w2;
+    map<vector<bool>, d_real> wtable;    
     int nsize1 = w.size()/2, nsize2 = w.size()-nsize1;
 
     copy(w.begin(), w.begin() + nsize1, std::back_inserter(w1));
@@ -102,7 +102,7 @@ map<vector<bool>, double> combinations(const vector<double>& w, int n, double th
             if (it1->second * it2->second > thr) {
               vector<bool> merge = it1->first;
               merge.insert(merge.end(), it2->first.begin(), it2->first.end());
-              wtable.insert(std::pair<vector<bool>, double>(merge, it1->second * it2->second));
+              wtable.insert(std::pair<vector<bool>, d_real>(merge, it1->second * it2->second));
             }
           }
         }

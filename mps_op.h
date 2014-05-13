@@ -21,7 +21,7 @@ void save_site(const MPS<dtype, Quantum>&, int, const char *);
 
 void load_site(MPS<dtype, Quantum>&, int,const char *);
 
-double norm_on_disk(const char*, int size);
+d_real norm_on_disk(const char*, int size);
 
 void normalize_on_disk(const char* filename, int size, int site = -1);
 

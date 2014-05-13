@@ -1,14 +1,14 @@
-//nog enkele definities:
+#ifndef INCLUDE_H_
+#define INCLUDE_H_
 
 #ifdef _COMPLEX
 #include <complex>
 typedef std::complex<double> dtype;
+typedef double d_real;
 #else
 typedef double dtype;
+typedef double d_real;
 #endif
-
-#ifndef INCLUDE_H_
-#define INCLUDE_H_
 
 #include "SpinQuantum.h"
 namespace btas { typedef SpinQuantum Quantum; };

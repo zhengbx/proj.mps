@@ -1,10 +1,12 @@
 #include "utils.h"
 #include <boost/algorithm/string.hpp>
+#include <fstream>
 
 using boost::trim;
 using boost::is_any_of;
 using std::cout;
 using std::endl;
+using std::ifstream;
 
 Input params;
 Matrix coefs;
@@ -12,13 +14,13 @@ Matrix coefs;
 void permute(Matrix& orbs, vector<int>& order) {
   Matrix orbs_i = orbs;
   for (int i = 0; i < order.size(); ++i) {
-    orbs.Row(i+1) = orbs_i.Row(order[i]);
+    orbs.row(i) = orbs_i.row(order[i]-1);
   }
-  if (order.size() == orbs.Nrows()) {
+  if (order.size() == orbs.rows()) {
     return;
-  } else if (order.size() * 2 == orbs.Nrows()) {
+  } else if (order.size() * 2 == orbs.rows()) {
     for (int i = 0; i < order.size(); ++i) {
-      orbs.Row(order.size()+i+1) = orbs_i.Row(order.size() + order[i]);
+      orbs.row(order.size()+i) = orbs_i.row(order.size() + order[i]-1);
     }
   } else {
     cout << "wrong reorder vector" << endl;
@@ -105,11 +107,11 @@ Matrix read_orbitals(string file) {
   int ncol = params.bcs ? nsites : norbs;
   int nrow = params.bcs ? 2*nsites : nsites;
   Matrix orbs(nrow, ncol);
-  double temp;
+  d_real temp;
   for (int i = 0; i < ncol; i++) {
     for (int j = 0; j < nrow; j++) {
       in >> temp;
-      orbs(j+1, i+1) = temp;
+      orbs(j, i) = temp;
     }
   }
   permute(orbs, order);

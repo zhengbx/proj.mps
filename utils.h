@@ -10,16 +10,27 @@
 #include <boost/shared_ptr.hpp>
 
 #define BOOST_NO_CXX11_SCOPED_ENUMS
-#include "newmat10/newmatap.h"
-#include "newmat10/newmatio.h"
-#include "newmat10/newmatutils.h"
+//#include "newmat10/newmatap.h"
+//#include "newmat10/newmatio.h"
+//#include "newmat10/newmatutils.h"
 
+#ifndef EIGEN_CONFIG_H_
+#define EIGEN_CONFIG_H_
+#include <boost/serialization/array.hpp>
+#define EIGEN_DENSEBASE_PLUGIN "../plugins/EigenDenseBaseAddons.h"
+
+#include <Eigen/Dense>
+#endif // EIGEN_CONFIG_H_
+
+#include "include.h"
 
 using std::vector;
 using std::string;
 
+typedef Eigen::Matrix<dtype, Eigen::Dynamic, Eigen::Dynamic> Matrix;
+
 struct Input {
-  double thr1p, thrnp;
+  d_real thr1p, thrnp;
   int M;
   bool calc_spectra, savemps, bcs, mem_test;
   string temp_prefix, temp, path; // temp is temporary dir, path is input file path

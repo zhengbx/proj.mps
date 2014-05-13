@@ -20,7 +20,7 @@ protected:
   virtual void build_ca_block(const vector<bool>& c1, const vector<bool>& c2) = 0;
   virtual void build_aa_block(const vector<bool>& c1, const vector<bool>& c2) = 0;
 public:
-  virtual double operator() (const vector<bool>& c1, const vector<bool>& c2) = 0;
+  virtual dtype operator() (const vector<bool>& c1, const vector<bool>& c2) = 0;
 };
 
 class Overlap_Slater: public Overlap {
@@ -34,7 +34,7 @@ protected:
   bool this_site_up;
 public:
   Overlap_Slater() {};
-  double operator() (const vector<bool>& c1, const vector<bool>& c2);
+  dtype operator() (const vector<bool>& c1, const vector<bool>& c2);
 };
 
 class Overlap_Slater_Left: public Overlap_Slater {
@@ -68,7 +68,7 @@ protected:
   bool this_site_up;
 public:
   Overlap_BCS() {}
-  double operator() (const vector<bool>& c1, const vector<bool>& c2);
+  dtype operator() (const vector<bool>& c1, const vector<bool>& c2);
 };
 
 class Overlap_BCS_Left: public Overlap_BCS {

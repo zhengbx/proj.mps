@@ -36,7 +36,6 @@ int main(int argc, char* argv[]){
     read_config(params.path + "/config.in", params);
     coefs = read_orbitals(params.path + "/orbitals.in");
   }
-
   broadcast(world, params, 0);
   broadcast(world, coefs, 0);
 

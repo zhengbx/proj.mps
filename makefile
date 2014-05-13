@@ -17,7 +17,7 @@ OBJ	= $(CPPSRC:.cpp=.o)
 # -----------------------------------------------------------------------------
 BRIGHT_ROOT=.
 
-BOOSTDIR=/home/boxiao/usr
+BOOSTDIR=$(HOME)/usr
 BOOSTINC=-I$(BOOSTDIR)/include
 BOOSTLIB=-L$(BOOSTDIR)/lib -lboost_serialization -lboost_filesystem -lboost_system -lboost_mpi
 
@@ -25,9 +25,10 @@ BTASINC=-I$(HOME)/mps/btas/include
 BTASLIB=-L$(HOME)/mps/btas/lib
 MPSXXINC=-I$(HOME)/mps/mpsxx
 
-NEWMATLIB=-L./newmat10 -lnewmat
+#NEWMATLIB=-L./newmat10 -lnewmat
+EIGENINC=-I$(HOME)/usr/include
 
-INCLUDE = $(BTASINC) $(MPSXXINC) $(BOOSTINC)
+INCLUDE = $(BTASINC) $(MPSXXINC) $(BOOSTINC) $(EIGENINC)
 
 LIBS=-lpthread -lmkl_intel_lp64 -lmkl_sequential -lmkl_core $(BOOSTLIB) $(BTASLIB) $(NEWMATLIB) -lbtas
 

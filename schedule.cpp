@@ -31,7 +31,7 @@ void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
       world.send(i, nsites+2, -1);
     }
   } else if (world.rank() == 1) {
-    partial_compress(nsites, MPS_DIRECTION::Left, params.M, params.temp.c_str(), 0, nsites/2+1);
+    partial_compress(nsites, MPS_DIRECTION::Left, params.M, params.temp.c_str(), 0, nsites/2);
     partial_compress(nsites, MPS_DIRECTION::Right, params.M, params.temp.c_str(), nsites-1, nsites/2-2);
     MPS<dtype, Quantum> A(nsites);
     cout << "Now normalize" << endl;
@@ -45,6 +45,7 @@ void dynamic_build(vector<boost::shared_ptr<SchmidtBasis>> basis) {
       world.recv(0, do_site, basis[do_site]);
       world.recv(0, do_site+1, basis[do_site+1]);
       QSTArray<dtype, 3, Quantum> A = generate_mps(basis[do_site], basis[do_site+1], do_site == nsites/2);
+      cout << A << endl;
       save_site(A, do_site, params.temp.c_str());
       basis[do_site].reset();
       basis[do_site+1].reset();

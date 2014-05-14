@@ -32,8 +32,10 @@ typedef Eigen::Matrix<dtype, Eigen::Dynamic, Eigen::Dynamic> Matrix;
 struct Input {
   d_real thr1p, thrnp;
   int M;
-  bool calc_spectra, savemps, bcs, mem_test;
+  bool calc_spectra, savemps, bcs, mem_test, kspace;
   string temp_prefix, temp, path; // temp is temporary dir, path is input file path
+  vector<d_real> kpoints;
+  vector<int> use_k;
 
   Input():
     thr1p(1e-7),
@@ -49,6 +51,7 @@ struct Input {
     ar & thr1p & thrnp & M & bcs;
     ar & calc_spectra & savemps & mem_test;
     ar & temp_prefix & temp & path;
+    ar & kpoints & use_k & kspace;
   }
 };
 
@@ -56,7 +59,9 @@ struct Input {
 void read_config(string file, Input& inp);
 
 // read orbitals
-Matrix read_orbitals(string file);
+void read_orbitals(string file);
+void read_orbitals_kspace(string file);
+dtype unity(d_real k);
 
 // permute sites
 void permute(Matrix& orbs, vector<int>& order);
@@ -68,6 +73,8 @@ string mktmpdir(const string& prefix);
 void banner();
 
 extern Input params;
-extern Matrix coefs;
-
+extern Matrix coefs; // orbital coef matrix
+extern vector<Matrix> k_coefs; // orbital coef for each k point
+extern vector<int> orb_k; // indicating which orbital belongs to which orbital
+extern vector<int> norb_k; // number of orbitals for each k point
 #endif

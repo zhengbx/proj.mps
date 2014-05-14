@@ -17,24 +17,31 @@ using std::endl;
 int main(int argc, char* argv[]){
   mpi::environment env(argc, argv);
   cout.setf(std::ios::fixed, std::ios::floatfield);
-  cout.precision(10);
+  cout.precision(4);
   if (argc <= 1) {
     cout << "No input file specified" << endl;
     abort();
   }
   
   mpi::communicator world;
+  // the program cannot run with fewer than 3 cores
   if (world.size() < 3) {
     cout << "This program runs with at least 3 cores" << endl;
     abort();
   }
+
+  // read configure file and orbital file
   if (world.rank() == 0) {
     banner();
     params.path = string(argv[1]);
     params.temp = mktmpdir(params.temp_prefix);
     // read configure file
     read_config(params.path + "/config.in", params);
-    coefs = read_orbitals(params.path + "/orbitals.in");
+    if (params.kspace) {
+      read_orbitals_kspace(params.path + "/orbitals.in");
+    } else {
+      read_orbitals(params.path + "/orbitals.in");
+    }
   }
   broadcast(world, params, 0);
   broadcast(world, coefs, 0);

@@ -16,6 +16,7 @@ Matrix coefs;
 vector<Matrix> k_coefs;
 vector<int> orb_k;
 vector<int> norb_k;
+vector<int> order;
 
 void permute(Matrix& orbs, vector<int>& order) {
   Matrix orbs_i = orbs;
@@ -194,7 +195,6 @@ void read_orbitals_kspace(string file) {
   int ncsites = nsites / params.kpoints.size(); // number of sites in a cell
   
   // reorder line
-  vector<int> order;
   std::getline(in, line);
   trim(line);
   boost::split(tokens, line, is_any_of("\t "), boost::token_compress_on);

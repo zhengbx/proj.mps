@@ -77,4 +77,5 @@ extern Matrix coefs; // orbital coef matrix
 extern vector<Matrix> k_coefs; // orbital coef for each k point
 extern vector<int> orb_k; // indicating which orbital belongs to which orbital
 extern vector<int> norb_k; // number of orbitals for each k point
+extern vector<int> order; // order of orbitals
 #endif

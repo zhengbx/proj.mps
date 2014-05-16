@@ -17,7 +17,7 @@ using std::endl;
 int main(int argc, char* argv[]){
   mpi::environment env(argc, argv);
   cout.setf(std::ios::fixed, std::ios::floatfield);
-  cout.precision(4);
+  cout.precision(10);
   if (argc <= 1) {
     cout << "No input file specified" << endl;
     abort();
@@ -45,6 +45,10 @@ int main(int argc, char* argv[]){
   }
   broadcast(world, params, 0);
   broadcast(world, coefs, 0);
+  broadcast(world, k_coefs, 0);
+  broadcast(world, orb_k, 0);
+  broadcast(world, norb_k, 0);
+  broadcast(world, order, 0);
 
   if (world.rank() == 0) {
     cout << "Calculation parameters" << endl;

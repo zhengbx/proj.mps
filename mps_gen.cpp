@@ -203,9 +203,9 @@ Overlap_Slater_Left::Overlap_Slater_Left(boost::shared_ptr<SchmidtBasis> sl, boo
   work_a.setZero();
   work_b.setZero();
 
-  m_ca = sl -> lcore().transpose() * sr -> lactive().topRows(nsites-1);
-  m_ac = sl -> lactive().transpose() * sr -> lcore().topRows(nsites-1);
-  m_aa = sl -> lactive().transpose() * sr -> lactive().topRows(nsites-1);
+  m_ca = sl -> lcore().adjoint() * sr -> lactive().topRows(nsites-1);
+  m_ac = sl -> lactive().adjoint() * sr -> lcore().topRows(nsites-1);
+  m_aa = sl -> lactive().adjoint() * sr -> lactive().topRows(nsites-1);
   m_sa = sr -> lactive().row(nsites-1);
 
   build_cc_block(sl, sr);
@@ -228,9 +228,9 @@ Overlap_Slater_Right::Overlap_Slater_Right(boost::shared_ptr<SchmidtBasis> sl, b
   work_a.setZero();
   work_b.setZero();
 
-  m_ca = sr -> rcore().transpose() * sl -> ractive().bottomRows(nsites-1);
-  m_ac = sr -> ractive().transpose() * sl -> rcore().bottomRows(nsites-1);
-  m_aa = sr -> ractive().transpose() * sl -> ractive().bottomRows(nsites-1);
+  m_ca = sr -> rcore().adjoint() * sl -> ractive().bottomRows(nsites-1);
+  m_ac = sr -> ractive().adjoint() * sl -> rcore().bottomRows(nsites-1);
+  m_aa = sr -> ractive().adjoint() * sl -> ractive().bottomRows(nsites-1);
   m_sa = sl -> ractive().row(0);
 
   build_cc_block(sl, sr);
@@ -242,14 +242,14 @@ void Overlap_Slater_Left::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boo
     this_site_up = true;
     parity = ((total_a + total_b) % 2 == 1) ? 1 : -1;
     work_a.topLeftCorner(1,rcore) = sr->lcore().row(nsites-1);
-    work_a.block(1, 0, lcore, rcore) = sl->lcore().transpose() * sr->lcore().topRows(nsites-1);
-    work_b.topLeftCorner(lcore, rcore) = sl->lcore().transpose() * sr->lcore().topRows(nsites-1);
+    work_a.block(1, 0, lcore, rcore) = sl->lcore().adjoint() * sr->lcore().topRows(nsites-1);
+    work_b.topLeftCorner(lcore, rcore) = sl->lcore().adjoint() * sr->lcore().topRows(nsites-1);
   } else {
     this_site_up = false;
     parity = (total_b % 2 == 1) ? 1 : -1;
     work_b.topLeftCorner(1, rcore) = sr->lcore().row(nsites-1);
-    work_b.block(1, 0, lcore, rcore) = sl->lcore().transpose() * sr->lcore().topRows(nsites-1);
-    work_a.topLeftCorner(lcore, rcore) = sl->lcore().transpose() * sr->lcore().topRows(nsites-1);
+    work_b.block(1, 0, lcore, rcore) = sl->lcore().adjoint() * sr->lcore().topRows(nsites-1);
+    work_a.topLeftCorner(lcore, rcore) = sl->lcore().adjoint() * sr->lcore().topRows(nsites-1);
   }
 }
 
@@ -259,14 +259,14 @@ void Overlap_Slater_Right::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, bo
     this_site_up = true;
     parity = 1;
     work_a.topLeftCorner(1, lcore) = sl->rcore().row(0);
-    work_a.block(1, 0, rcore, lcore) = sr->rcore().transpose() * sl->rcore().bottomRows(nsites-1);
-    work_b.topLeftCorner(rcore, lcore) = sr -> rcore().transpose() * sl -> rcore().bottomRows(nsites-1);
+    work_a.block(1, 0, rcore, lcore) = sr->rcore().adjoint() * sl->rcore().bottomRows(nsites-1);
+    work_b.topLeftCorner(rcore, lcore) = sr -> rcore().adjoint() * sl -> rcore().bottomRows(nsites-1);
   } else {
     this_site_up = false;
     parity = (total_a % 2 == 0) ? 1 : -1;
     work_b.topLeftCorner(1, lcore) = sl->rcore().row(0);
-    work_b.block(1, 0, rcore, lcore) = sr->rcore().transpose() * sl->rcore().bottomRows(nsites-1);
-    work_a.topLeftCorner(rcore, lcore) = sr->rcore().transpose() * sl->rcore().bottomRows(nsites-1);
+    work_b.block(1, 0, rcore, lcore) = sr->rcore().adjoint() * sl->rcore().bottomRows(nsites-1);
+    work_a.topLeftCorner(rcore, lcore) = sr->rcore().adjoint() * sl->rcore().bottomRows(nsites-1);
   }
 }
 
@@ -470,12 +470,12 @@ Overlap_BCS_Left::Overlap_BCS_Left(boost::shared_ptr<SchmidtBasis> sl, boost::sh
   work.resize(ntotal, ntotal);
   work.setZero();
 
-  m_ca = sl->lcore().topRows(nsites-1).transpose() * sr->lactive().topRows(nsites-1) +
-      sl->lcore().bottomRows(nsites-1).transpose() * sr->lactive().bottomRows(nsites).topRows(nsites-1);
-  m_ac = sl->lactive().topRows(nsites-1).transpose() * sr->lcore().topRows(nsites-1) +
-      sl->lactive().bottomRows(nsites-1).transpose() * sr->lcore().bottomRows(nsites).topRows(nsites-1);
-  m_aa = sl->lactive().topRows(nsites-1).transpose() * sr->lactive().topRows(nsites-1) +
-      sl->lactive().bottomRows(nsites-1).transpose() * sr->lactive().bottomRows(nsites).topRows(nsites-1);
+  m_ca = sl->lcore().topRows(nsites-1).adjoint() * sr->lactive().topRows(nsites-1) +
+      sl->lcore().bottomRows(nsites-1).adjoint() * sr->lactive().bottomRows(nsites).topRows(nsites-1);
+  m_ac = sl->lactive().topRows(nsites-1).adjoint() * sr->lcore().topRows(nsites-1) +
+      sl->lactive().bottomRows(nsites-1).adjoint() * sr->lcore().bottomRows(nsites).topRows(nsites-1);
+  m_aa = sl->lactive().topRows(nsites-1).adjoint() * sr->lactive().topRows(nsites-1) +
+      sl->lactive().bottomRows(nsites-1).adjoint() * sr->lactive().bottomRows(nsites).topRows(nsites-1);
 
   m_sa.resize(2, ractive_size);
   m_sa.row(0) = sr->lactive().row(2*nsites-1);
@@ -497,12 +497,12 @@ Overlap_BCS_Right::Overlap_BCS_Right(boost::shared_ptr<SchmidtBasis> sl, boost::
   work.resize(ntotal, ntotal);
   work.setZero();
 
-  m_ca = sr->rcore().topRows(nsites-1).transpose() * sl->ractive().topRows(nsites).bottomRows(nsites-1) + 
-     sr->rcore().bottomRows(nsites-1).transpose() * sl->ractive().bottomRows(nsites-1);
-  m_ac = sr->ractive().topRows(nsites-1).transpose() * sl->rcore().topRows(nsites).bottomRows(nsites-1) + 
-     sr->ractive().bottomRows(nsites-1).transpose() * sl->rcore().bottomRows(nsites-1);
-  m_aa = sr->ractive().topRows(nsites-1).transpose() * sl->ractive().topRows(nsites).bottomRows(nsites-1) + 
-     sr->ractive().bottomRows(nsites-1).transpose() * sl->ractive().bottomRows(nsites-1);
+  m_ca = sr->rcore().topRows(nsites-1).adjoint() * sl->ractive().topRows(nsites).bottomRows(nsites-1) + 
+     sr->rcore().bottomRows(nsites-1).adjoint() * sl->ractive().bottomRows(nsites-1);
+  m_ac = sr->ractive().topRows(nsites-1).adjoint() * sl->rcore().topRows(nsites).bottomRows(nsites-1) + 
+     sr->ractive().bottomRows(nsites-1).adjoint() * sl->rcore().bottomRows(nsites-1);
+  m_aa = sr->ractive().topRows(nsites-1).adjoint() * sl->ractive().topRows(nsites).bottomRows(nsites-1) + 
+     sr->ractive().bottomRows(nsites-1).adjoint() * sl->ractive().bottomRows(nsites-1);
   
   m_sa.resize(2, lactive_size);
   m_sa.row(0) = sl->ractive().row(nsites);
@@ -518,13 +518,13 @@ void Overlap_BCS_Left::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boost:
     parity = 1;
     work.row(0).head(rcore) = sr->lcore().row(2*nsites-1);
     work.row(1).head(rcore) = sr->lcore().row(nsites-1);
-    work.block(2, 0, lcore, rcore) = sl->lcore().topRows(nsites-1).transpose() * sr->lcore().topRows(nsites-1) +
-        sl->lcore().bottomRows(nsites-1).transpose() * sr->lcore().bottomRows(nsites).topRows(nsites-1);
+    work.block(2, 0, lcore, rcore) = sl->lcore().topRows(nsites-1).adjoint() * sr->lcore().topRows(nsites-1) +
+        sl->lcore().bottomRows(nsites-1).adjoint() * sr->lcore().bottomRows(nsites).topRows(nsites-1);
   } else {
     this_site_up = false;
     parity = 1;
-    work.topLeftCorner(lcore, rcore) = sl->lcore().topRows(nsites-1).transpose() * sr->lcore().topRows(nsites-1) +
-        sl->lcore().bottomRows(nsites-1).transpose() * sr->lcore().bottomRows(nsites).topRows(nsites-1);
+    work.topLeftCorner(lcore, rcore) = sl->lcore().topRows(nsites-1).adjoint() * sr->lcore().topRows(nsites-1) +
+        sl->lcore().bottomRows(nsites-1).adjoint() * sr->lcore().bottomRows(nsites).topRows(nsites-1);
   }
 }
 
@@ -535,13 +535,13 @@ void Overlap_BCS_Right::build_cc_block(boost::shared_ptr<SchmidtBasis> sl, boost
     parity = 1;
     work.row(0).head(lcore) = sl->rcore().row(nsites);
     work.row(1).head(lcore) = sl->rcore().row(0);
-    work.block(2, 0, rcore, lcore) = sr->rcore().topRows(nsites-1).transpose() * sl->rcore().topRows(nsites).bottomRows(nsites-1) +
-        sr->rcore().bottomRows(nsites-1).transpose() * sl->rcore().bottomRows(nsites-1);
+    work.block(2, 0, rcore, lcore) = sr->rcore().topRows(nsites-1).adjoint() * sl->rcore().topRows(nsites).bottomRows(nsites-1) +
+        sr->rcore().bottomRows(nsites-1).adjoint() * sl->rcore().bottomRows(nsites-1);
   } else {
     this_site_up = false;
     parity = 1;
-    work.topLeftCorner(rcore, lcore) = sr->rcore().topRows(nsites-1).transpose() * sl->rcore().topRows(nsites).bottomRows(nsites-1) +
-        sr->rcore().bottomRows(nsites-1).transpose() * sl->rcore().bottomRows(nsites-1);
+    work.topLeftCorner(rcore, lcore) = sr->rcore().topRows(nsites-1).adjoint() * sl->rcore().topRows(nsites).bottomRows(nsites-1) +
+        sr->rcore().bottomRows(nsites-1).adjoint() * sl->rcore().bottomRows(nsites-1);
   }
 }
 

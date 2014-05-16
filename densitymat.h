@@ -18,6 +18,7 @@ public:
     m_coefs = coefs;
   }
   virtual boost::shared_ptr<SchmidtBasis> basis(int cut) const = 0;
+  virtual boost::shared_ptr<SchmidtBasis> basis_k(int cut) const = 0;
   virtual int get_nsites() const = 0;
   virtual int get_norbs() const = 0;
 };
@@ -36,6 +37,7 @@ public:
   SlaterDM(Matrix& coefs): DensityMatrix(coefs), 
       nsites(m_coefs.rows()), norbs(m_coefs.cols()) {};
   boost::shared_ptr<SchmidtBasis> basis(int cut) const;
+  boost::shared_ptr<SchmidtBasis> basis_k(int cut) const;
   int get_nsites() const {  return nsites;};
   int get_norbs() const {  return norbs;};
 };
@@ -53,9 +55,9 @@ protected:
 public:
   BCSDM(Matrix& coefs): DensityMatrix(coefs), nsites(coefs.cols()) {}
   boost::shared_ptr<SchmidtBasis> basis(int cut) const;
+  boost::shared_ptr<SchmidtBasis> basis_k(int cut) const;
   int get_nsites() const {  return nsites;};
   int get_norbs() const {  return nsites;};
-
 };
 
 #endif

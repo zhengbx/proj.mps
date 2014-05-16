@@ -186,6 +186,13 @@ boost::shared_ptr<SchmidtBasis> SlaterDM::basis_k(int cut) const {
   if (cut <= nsites/2) {
     int offset = 0;
     for (int i = 0; i < params.kpoints.size(); ++i) {
+      if (norb_k[i] == 0) {
+        Eigen::Matrix<d_real, Eigen::Dynamic,1> D1;
+        Matrix new_orbs1;
+        D.push_back(D1);
+        new_orbs.push_back(new_orbs1);
+        continue;
+      }
       Matrix pOverlap = m_coefs.block(0, offset, cut, norb_k[i]).adjoint() * m_coefs.block(0, offset, cut, norb_k[i]);
       Eigen::SelfAdjointEigenSolver<Matrix> es(pOverlap);
       D.push_back(es.eigenvalues());
@@ -197,7 +204,7 @@ boost::shared_ptr<SchmidtBasis> SlaterDM::basis_k(int cut) const {
           kr += params.kpoints[i];
         } else if (D.back()(j) > 1.-params.thr1p) {
           l.push_back(std::pair<int, int>(i,j));
-          kl += params.kpoints[i];          
+          kl += params.kpoints[i];
         } else {
           a.push_back(std::pair<int, int>(i,j));
           ka.push_back(params.kpoints[i]);   
@@ -226,6 +233,13 @@ boost::shared_ptr<SchmidtBasis> SlaterDM::basis_k(int cut) const {
   } else {
     int offset = 0;
     for (int i = 0; i < params.kpoints.size(); ++i) {
+      if (norb_k[i] == 0) {
+        Eigen::Matrix<d_real, Eigen::Dynamic,1> D1;
+        Matrix new_orbs1;
+        D.push_back(D1);
+        new_orbs.push_back(new_orbs1);
+        continue;
+      }
       Matrix pOverlap = m_coefs.block(cut, offset, nsites-cut, norb_k[i]).adjoint() * m_coefs.block(cut, offset, nsites-cut, norb_k[i]);
       Eigen::SelfAdjointEigenSolver<Matrix> es(pOverlap);
       D.push_back(es.eigenvalues());
@@ -252,7 +266,18 @@ boost::shared_ptr<SchmidtBasis> SlaterDM::basis_k(int cut) const {
     ra.resize(nsites-cut, a.size());
     la.resize(cut, a.size());
 
+    for (int i = 0; i < l.size(); ++i) {
+      lc.col(i) = new_orbs[l[i].first].col(l[i].second).head(cut) / sqrt(1.-D[l[i].first](l[i].second));
+    }
+    for (int i = 0; i < r.size(); ++i) {
+      rc.col(i) = new_orbs[r[i].first].col(r[i].second).tail(nsites-cut) / sqrt(D[r[i].first](r[i].second));
+    }
+    for (int i = 0; i < a.size(); ++i) {
+      la.col(i) = new_orbs[a[i].first].col(a[i].second).head(cut) / sqrt(1.-D[a[i].first](a[i].second));
+      ra.col(i) = new_orbs[a[i].first].col(a[i].second).tail(nsites-cut) / sqrt(D[a[i].first](a[i].second));
+    }
   }
+  return boost::shared_ptr<SchmidtBasis>(new SchmidtBasis_Slater(lc, rc, la, ra, lweight)); // temp
 }
 
 boost::shared_ptr<SchmidtBasis> BCSDM::basis_k(int cut) const {

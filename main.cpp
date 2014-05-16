@@ -68,7 +68,8 @@ int main(int argc, char* argv[]){
     if (i % world.size() == world.rank()) {
     //if (world.rank() == 0) {
       cout << "Cut = " << i << " On processor " << world.rank() << endl;
-      basis_set[i] = dm -> basis(i);
+      bool use_kbasis = (std::find(params.use_k.begin(), params.use_k.end(), i) != params.use_k.end());
+      basis_set[i] = use_kbasis ? dm -> basis_k(i) : dm -> basis(i);
     }
   }
   t_basis.pause();

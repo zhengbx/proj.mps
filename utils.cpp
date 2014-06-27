@@ -1,9 +1,6 @@
 #include "utils.h"
 #include <boost/algorithm/string.hpp>
 #include <fstream>
-#include <cmath>
-
-#define PI 3.14159265358979
 
 using boost::trim;
 using boost::is_any_of;
@@ -33,18 +30,6 @@ void permute(Matrix& orbs, vector<int>& order) {
     cout << "wrong reorder vector" << endl;
     abort();
   }
-}
-
-dtype unity(d_real k) {
-  // compute exp(2*\pi*j*k)
-  d_real c = cos(2*PI*k);
-  d_real s = sin(2*PI*k);
-#ifdef _COMPLEX
-  return dtype(c, s);
-#else
-  assert(fabs(s) < 1e-5);
-  return c;
-#endif
 }
 
 void read_config(string file, Input& inp) {
@@ -78,18 +63,16 @@ void read_config(string file, Input& inp) {
     } 
 #ifdef _COMPLEX    
     else if (boost::iequals(tokens[0], "kpoints")) {
-      if (boost::iequals(tokens[1], "pbc") || boost::iequals(tokens[1], "apbc")) {
+      if (boost::iequals(tokens[1], "pbc")) {
         int nkpts = atoi(tokens[2].c_str());
-        d_real base = 1./(d_real)nkpts;
-        d_real shift = boost::iequals(tokens[1], "apbc") ? 0.5*base:0;
         for (int i = 0; i < nkpts; ++i) {
-          inp.kpoints.push_back(base*i+shift);
+          inp.kpoints.push_back(kpoint(nkpts, i));
         }
+      } else if (boost::iequals(tokens[1], "apbc")) {
+        int nkpts = atoi(tokens[2].c_str());
       } else {
-        // set kpoints manually
-        for (int i = 1; i < tokens.size(); ++i) {
-          inp.kpoints.push_back((d_real)atof(tokens[i].c_str()));
-        }
+        cout << "wrong key word for kpoints" << endl;
+        abort();
       }
     } else if (boost::iequals(tokens[0], "use_kpoints")) {
       for (int i = 1; i < tokens.size(); ++i) {
@@ -258,9 +241,9 @@ void read_orbitals_kspace(string file) {
   int offset = 0;
   for (int t = 0; t < params.kpoints.size(); ++t) {
     for (int s = 0; s < params.kpoints.size(); ++s) {
-      coefs.block(s*ncsites, offset, ncsites, norb_k[t]) = k_coefs[t].block(0, 0, ncsites, norb_k[t]) * unity(params.kpoints[t]*s) / sqrt(params.kpoints.size());
+      coefs.block(s*ncsites, offset, ncsites, norb_k[t]) = k_coefs[t].block(0, 0, ncsites, norb_k[t]) * (params.kpoints[t]*s).eval() / sqrt(params.kpoints.size());
       if (params.bcs) {
-        coefs.block(nsites + s*ncsites, offset, ncsites, norb_k[t]) = k_coefs[t].block(ncsites, 0, ncsites, norb_k[t]) * unity(params.kpoints[t]) / sqrt(params.kpoints.size());
+        coefs.block(nsites + s*ncsites, offset, ncsites, norb_k[t]) = k_coefs[t].block(ncsites, 0, ncsites, norb_k[t]) * (params.kpoints[t]*s).eval() / sqrt(params.kpoints.size());
       }
     }
     offset += norb_k[t];

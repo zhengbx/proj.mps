@@ -21,11 +21,12 @@ protected:
   vector<vector<bool>> l_list, r_list;
   vector<d_real> npweight;
   vector<d_real> weight;
+  vector<int> k_bounds; // for left basis
 
+  ActiveSpaceIterator() {}
   friend class boost::serialization::access;
-  ActiveSpaceIterator() {}  
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {
-    ar & quantum & nsize & l_list & r_list & weight & npweight;
+    ar & quantum & nsize & l_list & r_list & weight & npweight & k_bounds;
     basis = nullptr;
   }
 public:
@@ -37,7 +38,16 @@ public:
     basis = nullptr;
   }
   int size() const {  return l_list.size();}
-  vector<bool> get_config(const int& i, bool left = true) const {  
+  vector<int> ksize() const {
+    int temp = 0;
+    vector<int> ks;
+    for (int i = 0; i < k_bounds.size(); ++i) {
+      ks.push_back(k_bounds[i]-temp);
+      temp = k_bounds[i];
+    }
+    return ks;
+  }
+  const vector<bool>& get_config(const int& i, bool left = true) const {  
     return left ? l_list[i]: r_list[i];
   }
   d_real get_schmidt_coef(const int& i) const {
@@ -49,7 +59,7 @@ public:
 class ActiveSpaceIterator_Slater: public ActiveSpaceIterator {
 protected:
   int na, nb; // number of alpha and beta electrons in active space
-  void build_iterator();
+  void build_iterator(bool kinfo = false);
 
   friend class boost::serialization::access;
   ActiveSpaceIterator_Slater() {}  
@@ -69,7 +79,7 @@ public:
 class ActiveSpaceIterator_BCS: public ActiveSpaceIterator {
 protected:
   int nqp; // number of quasiparticle excitations
-  void build_iterator();
+  void build_iterator(bool kinfo = false);
 
   friend class boost::serialization::access;
   ActiveSpaceIterator_BCS() {}  
@@ -92,8 +102,13 @@ protected:
   Matrix m_lc, m_rc, m_la, m_ra;
   vector<d_real> m_lweight, m_rweight;
   vector<int> quantums, dims;
+  vector<vector<int>> kdims;
   map<int, boost::shared_ptr<ActiveSpaceIterator>> m_it;
 
+  // k-space information
+  bool m_kinfo;
+  kpoint m_kl, m_kr;
+  vector<kpoint> m_ka;
   
   // compute possible quantum numbers, for left basis,
   // if use for right basis, just add a minus sign
@@ -106,6 +121,7 @@ protected:
     ar & m_nlc & m_nrc & m_na & m_lsites & m_rsites;
     ar & m_lc & m_rc & m_la & m_ra & quantums & dims;
     ar & m_lweight & m_rweight;
+    ar & m_kinfo & m_kl & m_kr & m_ka & kdims;
 
     ar.register_type(static_cast<ActiveSpaceIterator_Slater*>(nullptr));
     ar.register_type(static_cast<ActiveSpaceIterator_BCS*>(nullptr));
@@ -118,31 +134,57 @@ public:
   SchmidtBasis(const Matrix& lcore, const Matrix& rcore, const Matrix& lactive, 
       const Matrix& ractive, const vector<d_real>& lweight): m_lc(lcore), m_rc(rcore), 
       m_la(lactive), m_ra(ractive), m_lweight(lweight), m_nlc(lcore.cols()),
-      m_nrc(rcore.cols()), m_na(lactive.cols()) {
+      m_nrc(rcore.cols()), m_na(lactive.cols()), m_kinfo(false) {
     m_rweight.resize(m_na);
     for (int i = 0; i < m_na; ++i) {
       m_rweight[i] = 1. - m_lweight[i];
     }
   }
 
-  int lsites() const {  return m_lsites;};
-  int rsites() const {  return m_rsites;};
+  SchmidtBasis(const Matrix& lcore, const Matrix& rcore, const Matrix& lactive, 
+      const Matrix& ractive, const vector<d_real>& lweight, const kpoint& kl, const kpoint& kr,
+      const vector<kpoint>& ka): m_lc(lcore), m_rc(rcore), 
+      m_la(lactive), m_ra(ractive), m_lweight(lweight), m_nlc(lcore.cols()),
+      m_nrc(rcore.cols()), m_na(lactive.cols()), m_kinfo(true), m_kl(kl), m_kr(kr), 
+      m_ka(ka) {
+    m_rweight.resize(m_na);
+    for (int i = 0; i < m_na; ++i) {
+      m_rweight[i] = 1. - m_lweight[i];
+    }
+  }
 
-  int nlcore() const {  return m_nlc;};
-  int nrcore() const {  return m_nrc;};
+  int lsites() const {  return m_lsites;}
+  int rsites() const {  return m_rsites;}
 
-  int nactive() const {  return m_na;};
+  int nlcore() const {  return m_nlc;}
+  int nrcore() const {  return m_nrc;}
 
-  const Matrix& lcore() const {  return m_lc;};
-  const Matrix& rcore() const {  return m_rc;};
-  const Matrix& lactive() const {  return m_la;};
-  const Matrix& ractive() const {  return m_ra;};
+  int nactive() const {  return m_na;}
+
+  const Matrix& lcore() const {  return m_lc;}
+  const Matrix& rcore() const {  return m_rc;}
+  const Matrix& lactive() const {  return m_la;}
+  const Matrix& ractive() const {  return m_ra;}
 
   const vector<int>& get_q() const {  return quantums;}
   const vector<int>& get_d() const {  return dims;}
 
   vector<d_real> lweight() const {
     return std::move(m_lweight);
+  }
+
+  bool has_kinfo() const {  return m_kinfo;}
+  kpoint kl() const {  return m_kl;}
+  kpoint kr() const {  return m_kr;}
+  const vector<kpoint>& ka() const {  return m_ka;}
+  kpoint ka(const vector<bool>& config) const {
+    kpoint temp(m_kl.get_N(), 0);
+    for (int i = 0; i < m_na; ++i) {
+      if (config[i]) {
+        temp += m_ka[i];
+      }
+    }
+    return temp;
   }
 
   friend std::ostream& operator << (std::ostream& os, const SchmidtBasis& basis);
@@ -159,12 +201,22 @@ protected:
 public:
   SchmidtBasis_Slater(const Matrix& lcore, const Matrix& rcore, const Matrix& lactive, 
       const Matrix& ractive, const vector<d_real>& lweight): SchmidtBasis(lcore, rcore, 
-        lactive, ractive, lweight) {
+      lactive, ractive, lweight) {
     m_lsites = lcore.rows();
     m_rsites = rcore.rows();
     calc_q();
     calc_dim();
   }
+
+  SchmidtBasis_Slater(const Matrix& lcore, const Matrix& rcore, const Matrix& lactive, 
+      const Matrix& ractive, const vector<d_real>& lweight, kpoint kl, kpoint kr,
+      const vector<kpoint>& ka): SchmidtBasis(lcore, rcore, lactive, ractive, lweight, kl, kr, ka) {
+    m_lsites = lcore.rows();
+    m_rsites = rcore.rows();
+    calc_q();
+    calc_dim();
+  }
+
   void calc_q();
 };
 
@@ -177,8 +229,17 @@ protected:
   }
 public:
   SchmidtBasis_BCS(const Matrix& lcore, const Matrix& rcore, const Matrix& lactive, 
+      const Matrix& ractive, const vector<d_real>& lweight, kpoint kl, kpoint kr,
+      const vector<kpoint>& ka): SchmidtBasis(lcore, rcore, lactive, ractive, lweight, kl, kr, ka) {
+    m_lsites = lcore.rows()/2;
+    m_rsites = rcore.rows()/2;
+    calc_q();
+    calc_dim();
+  }
+
+  SchmidtBasis_BCS(const Matrix& lcore, const Matrix& rcore, const Matrix& lactive, 
       const Matrix& ractive, const vector<d_real>& lweight): SchmidtBasis(lcore, rcore, 
-        lactive, ractive, lweight) {
+      lactive, ractive, lweight) {
     m_lsites = lcore.rows()/2;
     m_rsites = rcore.rows()/2;
     calc_q();
@@ -188,14 +249,14 @@ public:
 };
 
 namespace boost { 
-namespace serialization {
-template <class Archive> void serialize(Archive & ar, boost::shared_ptr<SchmidtBasis>& t, const unsigned int file_version) {
-  ar.register_type(static_cast<SchmidtBasis_Slater*>(nullptr));
-  ar.register_type(static_cast<SchmidtBasis_BCS*>(nullptr));
-  BOOST_STATIC_ASSERT(boost::serialization::tracking_level<SchmidtBasis>::value != boost::serialization::track_never);
-  boost::serialization::split_free(ar, t, file_version);
-}
-}
+  namespace serialization {
+    template <class Archive> void serialize(Archive & ar, boost::shared_ptr<SchmidtBasis>& t, const unsigned int file_version) {
+      ar.register_type(static_cast<SchmidtBasis_Slater*>(nullptr));
+      ar.register_type(static_cast<SchmidtBasis_BCS*>(nullptr));
+      BOOST_STATIC_ASSERT(boost::serialization::tracking_level<SchmidtBasis>::value != boost::serialization::track_never);
+      boost::serialization::split_free(ar, t, file_version);
+    }
+  }
 }
 
 std::ostream& operator << (std::ostream& os, const vector<bool>& bits);

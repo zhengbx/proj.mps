@@ -23,18 +23,72 @@
 #endif // EIGEN_CONFIG_H_
 
 #include "include.h"
+#define PI 3.14159265358979
 
 using std::vector;
 using std::string;
 
 typedef Eigen::Matrix<dtype, Eigen::Dynamic, Eigen::Dynamic> Matrix;
 
+class kpoint {
+private:
+  int N, n;
+  friend class boost::serialization::access;
+  template<class Archive> void serialize(Archive & ar, const unsigned int version) {
+    ar & N & n;
+  }
+  void init(const kpoint& other) {
+    if (N == 0) {
+      N = other.get_N();
+      n = 0;
+    } else if (N == other.get_N()) {
+      return;
+    } else {
+      abort();
+    }
+  }
+public:
+  kpoint(int _N = 0, int _n = 0): N(_N), n(_n) {}
+  kpoint operator+(const kpoint& other) const {
+    
+    assert(N == other.N);
+    return kpoint(N, (n+other.n) % N);
+  }
+  void operator+=(const kpoint& other) {
+    init(other);
+    n = (n + other.n) % N;
+  }
+  bool operator==(const kpoint& other) const {
+    return (N == other.N) && (n == other.n);
+  }
+  kpoint operator*(const int& s) const {
+    return kpoint(N, (n*s) % N);
+  }
+  int get_N() const {  return N;}
+  int get_n() const {  return n;}
+  friend std::ostream& operator << (std::ostream& os, const kpoint& p) {
+    os << "(" << p.N << ", " << p.n << ")";
+    return os;
+  }
+  dtype eval() const {
+    d_real theta = (double)n / N;
+    d_real c = cos(2*PI*theta);
+    d_real s = sin(2*PI*theta);
+#ifdef _COMPLEX
+    return dtype(c, s);
+#else
+    assert(fabs(s) < 1e-5);
+    return c;
+#endif
+  }
+};
+
 struct Input {
   d_real thr1p, thrnp;
   int M;
   bool calc_spectra, savemps, bcs, mem_test, kspace;
   string temp_prefix, temp, path; // temp is temporary dir, path is input file path
-  vector<d_real> kpoints;
+  vector<kpoint> kpoints;
   vector<int> use_k;
 
   Input():
@@ -61,7 +115,7 @@ void read_config(string file, Input& inp);
 // read orbitals
 void read_orbitals(string file);
 void read_orbitals_kspace(string file);
-dtype unity(d_real k);
+
 
 // permute sites
 void permute(Matrix& orbs, vector<int>& order);

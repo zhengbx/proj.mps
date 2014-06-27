@@ -118,42 +118,95 @@ ActiveSpaceIterator_Slater::ActiveSpaceIterator_Slater(int q, const SchmidtBasis
   int ntotal = basis -> lsites() - basis -> nlcore() * 2;
   na = (ntotal + q) / 2;
   nb = (ntotal - q) / 2;
-  build_iterator();
+  build_iterator(basis -> has_kinfo());
 }
 
 ActiveSpaceIterator_BCS::ActiveSpaceIterator_BCS(int q, const SchmidtBasis* _basis): ActiveSpaceIterator(q, _basis) {
   nqp = q - basis -> nlcore() + basis -> lsites(); // nqp + ncore - nsites = q
-  build_iterator();  
+  build_iterator(basis -> has_kinfo());  
 }
 
-void ActiveSpaceIterator_Slater::build_iterator() {
+void ActiveSpaceIterator_Slater::build_iterator(bool kinfo) {
   auto wtable_a = combinations(weight, na, params.thrnp / weight_bound(weight, nb));
   auto wtable_b = combinations(weight, nb, params.thrnp / weight_bound(weight, na));
 
-  for (auto it1 = wtable_a.begin(); it1 != wtable_a.end(); ++it1) {
-    for (auto it2 = wtable_b.begin(); it2 != wtable_b.end(); ++it2) {
-      if (it1->second * it2->second > params.thrnp) {
-        vector<bool> merge = it1->first;
-        merge.insert(merge.end(), it2->first.begin(), it2->first.end());
-        l_list.push_back(merge);
-        r_list.push_back(complimentary(merge));
-        npweight.push_back(it1->second * it2->second);
+  if (kinfo) {
+    int N = params.kpoints[0].get_N();
+    vector<vector<vector<bool>>> temp_l(N);
+    vector<vector<vector<bool>>> temp_r(N);
+    vector<vector<d_real>> temp_wt(N, vector<d_real>(0));
+    for (int i = 0; i < N; ++i) {
+      temp_l[i].resize(0);
+      temp_r[i].resize(0);
+      temp_wt[i].resize(0);
+    }
+    for (auto it1 = wtable_a.begin(); it1 != wtable_a.end(); ++it1) {
+      for (auto it2 = wtable_b.begin(); it2 != wtable_b.end(); ++it2) {
+        if (it1->second * it2->second > params.thrnp) {
+          vector<bool> merge = it1->first;
+          merge.insert(merge.end(), it2->first.begin(), it2->first.end());
+          kpoint k = basis->kl() + basis->ka(it1->first) + basis->ka(it2->first); // k of the left part
+          temp_l[k.get_n()].push_back(merge);
+          temp_r[k.get_n()].push_back(complimentary(merge));
+          temp_wt[k.get_n()].push_back(it1->second * it2->second);
+        }
+      }
+    }
+    int count = 0;
+    for (int i = 0; i < N; ++i) {
+      l_list.insert(l_list.end(), temp_l[i].begin(), temp_l[i].end());
+      r_list.insert(r_list.end(), temp_r[i].begin(), temp_r[i].end());
+      npweight.insert(npweight.end(), temp_wt[i].begin(), temp_wt[i].end());
+      count += temp_wt[i].size();
+      k_bounds.push_back(count); // for left basis
+    }
+  } else {
+    for (auto it1 = wtable_a.begin(); it1 != wtable_a.end(); ++it1) {
+      for (auto it2 = wtable_b.begin(); it2 != wtable_b.end(); ++it2) {
+        if (it1->second * it2->second > params.thrnp) {
+          vector<bool> merge = it1->first;
+          merge.insert(merge.end(), it2->first.begin(), it2->first.end());
+          l_list.push_back(merge);
+          r_list.push_back(complimentary(merge));
+          npweight.push_back(it1->second * it2->second);
+        }
       }
     }
   }
 }
 
-void ActiveSpaceIterator_BCS::build_iterator() {
+void ActiveSpaceIterator_BCS::build_iterator(bool kinfo) {
   auto wtable = combinations(weight, nqp, params.thrnp);
-  l_list.resize(wtable.size());
-  r_list.resize(wtable.size());
-  npweight.resize(wtable.size());
-  int count = 0;
-  for (auto it = wtable.begin(); it != wtable.end(); ++it) {
-    l_list[count] = it->first;
-    r_list[count] = complimentary(it->first);
-    npweight[count] = it->second;
-    ++count;
+  if (kinfo) {
+    int N = params.kpoints[0].get_N();
+    vector<vector<vector<bool>>> temp_l(N);
+    vector<vector<vector<bool>>> temp_r(N);
+    vector<vector<d_real>> temp_wt(N);
+    for (auto it = wtable.begin(); it != wtable.end(); ++it) {
+      kpoint k = basis->kl() + basis->ka(it->first);
+      temp_l[k.get_n()].push_back(it->first);
+      temp_r[k.get_n()].push_back(complimentary(it->first));
+      temp_wt[k.get_n()].push_back(it->second);
+    }
+    int count = 0;
+    for (int i = 0; i < N; ++i) {
+      l_list.insert(l_list.end(), temp_l[i].begin(), temp_l[i].end());
+      r_list.insert(r_list.end(), temp_r[i].begin(), temp_r[i].end());
+      npweight.insert(npweight.end(), temp_wt[i].begin(), temp_wt[i].end());
+      count += temp_wt[i].size();
+      k_bounds.push_back(count); // for left basis
+    }
+  } else {
+    l_list.resize(wtable.size());
+    r_list.resize(wtable.size());
+    npweight.resize(wtable.size());
+    int count = 0;
+    for (auto it = wtable.begin(); it != wtable.end(); ++it) {
+      l_list[count] = it->first;
+      r_list[count] = complimentary(it->first);
+      npweight[count] = it->second;
+      ++count;
+    }
   }
 }
 
@@ -162,6 +215,10 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
   os.precision(10);
   os << "Left Sites " << basis.lsites() << "  Right Sites " << basis.rsites() << endl;
   os << "Core Orbitals  Left (" << basis.nlcore() << ")  Right (" << basis.nrcore() << ")" << endl;
+  if (basis.has_kinfo()) {
+    os << " Left Core  k = " << basis.kl().eval() << endl;
+    os << "Right Core  k = " << basis.kr().eval() << endl;
+  }
   os << "Active Space (" << basis.nactive() << ") with Left Weights:\n";
   for (int i = 0; i < basis.nactive(); ++i) {
     if (i > 0 && i % 6 == 0) {
@@ -169,9 +226,25 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
     }
     os << basis.m_lweight[i] << "  ";
   }
+  os << endl;  
+  if (basis.has_kinfo()) {
+    os << "And momentum(k):\n";
+    for (int i = 0; i < basis.nactive(); ++i) {
+      if (i > 0 && i % 6 == 0) {
+        os << endl;
+      }
+      os << basis.ka()[i].eval() << "  ";
+    }
+  }
   os << endl;
   os << "Quantum Numbers  " << basis.quantums << endl;
   os << "Dimensions       " << basis.dims << endl;
+  if (basis.has_kinfo()) {
+    os << "k-space resolved Dimensions" << endl;
+    for (int i = 0; i < basis.kdims.size(); ++i) {
+      os << basis.kdims[i] << endl;
+    }
+  }
   return os;
 }
 
@@ -194,8 +267,12 @@ void SchmidtBasis_BCS::calc_q() {
 
 void SchmidtBasis::calc_dim() {
   dims.resize(quantums.size(), 0);
+  kdims.resize(quantums.size());
   for (int i = 0; i < quantums.size(); ++i) {
     dims[i] = iterator(quantums[i]) -> size();
+    if (m_kinfo) {
+      kdims[i] = iterator(quantums[i]) -> ksize();
+    }
   }
 }
 

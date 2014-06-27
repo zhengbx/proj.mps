@@ -124,6 +124,13 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
       //svd
       dweight += Gesvd<dtype,3,3,Quantum,btas::RightArrow>(mps[i],S,U,V,D);
       //copy unitary to mpx
+      if (i%4 == 3) {
+      QSTArray<dtype, 2, Quantum> MA;
+      QSTArray<dtype, 3, Quantum> MB;
+      Copy(mps[i], MB);
+      Conj(MB); 
+      Contract((dtype)1.0, MB.conjugate(), shape(0,1), mps[i], shape(0,1), (dtype)0.0,MA);
+      }
       Copy(U,mps[i]);
       printf("site %3d  after compress %12d\n", i, mps_size(mps[i]));      
       save_site(mps, i, filename);

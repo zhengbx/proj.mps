@@ -34,7 +34,6 @@ int main(int argc, char* argv[]){
   if (world.rank() == 0) {
     banner();
     params.path = string(argv[1]);
-    params.temp = mktmpdir(params.temp_prefix);
     // read configure file
     read_config(params.path + "/config.in", params);
     if (params.kspace) {
@@ -42,6 +41,7 @@ int main(int argc, char* argv[]){
     } else {
       read_orbitals(params.path + "/orbitals.in");
     }
+    params.temp = mktmpdir(params.temp_prefix);    
   }
   broadcast(world, params, 0);
   broadcast(world, coefs, 0);

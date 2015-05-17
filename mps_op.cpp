@@ -109,7 +109,7 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
     // in case of restart
     char name[50];
     sprintf(name, "%s/LEFT.log", filename);
-    if (boost::filesystem::existes(string(name))) {
+    if (boost::filesystem::exists(string(name))) {
       // read what sites are already compressed
       ifstream logfile(name);
       int s = first;
@@ -170,7 +170,7 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
     // in case of restart
     char name[50];
     sprintf(name, "%s/RIGHT.log", filename);
-    if (boost::filesystem::existes(string(name))) {
+    if (boost::filesystem::exists(string(name))) {
       // read what sites are already compressed
       ifstream logfile(name);
       int s = first;

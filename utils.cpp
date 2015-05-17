@@ -60,6 +60,8 @@ void read_config(string file, Input& inp) {
       inp.mem_test = true;
     } else if (boost::iequals(tokens[0], "prefix")) {
       inp.temp_prefix = tokens[1];
+    } else if (boost::iequals(tokens[0], "restart")) {
+      inp.restart = true;
     } 
 #ifdef _COMPLEX    
     else if (boost::iequals(tokens[0], "kpoints")) {

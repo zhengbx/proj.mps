@@ -33,6 +33,7 @@ struct Input {
   d_real thr1p, thrnp;
   int M;
   bool calc_spectra, savemps, bcs, mem_test;
+  bool restart;
   string temp_prefix, temp, path; // temp is temporary dir, path is input file path
 
   Input():
@@ -42,7 +43,8 @@ struct Input {
     calc_spectra(true),
     savemps(false),
     mem_test(false),
-    temp_prefix("/scratch/boxiao/MPSTemp") {}
+    temp_prefix("/scratch/boxiao/MPSTemp"),
+    restart(false) {}
   friend std::ostream& operator << (std::ostream& os, const Input& inp);
   friend class boost::serialization::access;
   template<class Archive> void serialize(Archive & ar, const unsigned int version) {

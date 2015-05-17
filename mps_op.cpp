@@ -106,6 +106,21 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
   dtype acc_norm = 1.;
 
   if(dir == MPS_DIRECTION::Left) {
+    // in case of restart
+    char name[50];
+    sprintf(name, "%s/LEFT.log", filename);
+    if (boost::filesystem::existes(string(name))) {
+      // read what sites are already compressed
+      ifstream logfile(name);
+      int s = first;
+      while (!logfile.eof()) {
+        logfile >> s;
+        printf("Site %3d already compressed\n", s); 
+      }
+      logfile.close();
+      first = s;
+    }
+
     STArray<d_real, 1> S;//singular values
     QSTArray<dtype, 2, Quantum> V;//V^T
     QSTArray<dtype, 3, Quantum> U;//U --> unitary left normalized matrix
@@ -125,9 +140,7 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
       dweight += Gesvd<dtype,3,3,Quantum,btas::RightArrow>(mps[i],S,U,V,D);
       //copy unitary to mpx
       Copy(U,mps[i]);
-      printf("site %3d  after compress %12d\n", i, mps_size(mps[i]));      
-      save_site(mps, i, filename);
-      mps[i].clear();
+      printf("site %3d  after compress %12d\n", i, mps_size(mps[i]));
       //paste S and V together
       Dimm(S,V);
       // now read next site
@@ -139,6 +152,13 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
       //when compressing dimensions will change, so reset:
       mps[i + 1].clear();
       Contract((dtype)1.0,V,shape(1),U,shape(0),(dtype)0.0,mps[i + 1]);
+      save_site(mps, i, filename);
+      mps[i].clear();
+      save_site(mps, i+1, filename);
+      // log the progress
+      ofstream logfile(name, ofstream::app);
+      logfile << i+1 << " ";
+      logfile.close();
       dtype nrm = sqrt(Dotc(mps[i+1],mps[i+1]));
       acc_norm *= pow(nrm, 1./(d_real)L);
       Scal(acc_norm / nrm, mps[i+1]);
@@ -147,6 +167,21 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
     save_site(mps, last, filename);
     mps[last].clear();
   } else {
+    // in case of restart
+    char name[50];
+    sprintf(name, "%s/RIGHT.log", filename);
+    if (boost::filesystem::existes(string(name))) {
+      // read what sites are already compressed
+      ifstream logfile(name);
+      int s = first;
+      while (!logfile.eof()) {
+        logfile >> s;
+        printf("Site %3d already compressed\n", s); 
+      }
+      logfile.close();
+      first = s;
+    }
+
     STArray<d_real, 1> S;//singular values
     QSTArray<dtype, 3, Quantum> V;//V^T --> unitary right normalized matrix
     QSTArray<dtype, 2, Quantum> U;//U
@@ -164,8 +199,6 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
       //copy unitary to mpx
       Copy(V,mps[i]);
       printf("site %3d  after compress %12d\n", i, mps_size(mps[i]));
-      save_site(mps, i, filename);
-      mps[i].clear();
       //paste U and S together
       Dimm(U,S);
       check_existence(i-1, filename);
@@ -176,7 +209,13 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
       //when compressing dimensions will change, so reset:
       mps[i - 1].clear();
       Contract((dtype)1.0,V,shape(2),U,shape(0),(dtype)0.0,mps[i - 1]);
-
+      save_site(mps, i, filename);
+      mps[i].clear();
+      save_site(mps, i-1, filename);
+      // log the progress
+      ofstream logfile(name, ofstream::app);
+      logfile << i-1 << " ";
+      logfile.close();
       dtype nrm = sqrt(Dotc(mps[i-1],mps[i-1]));
       acc_norm *= pow(nrm, 1./(d_real)L);
       Scal(acc_norm/nrm,mps[i-1]);

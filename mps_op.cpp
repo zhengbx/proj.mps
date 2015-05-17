@@ -105,6 +105,12 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
   MPS<dtype, Quantum> mps(L);
   dtype acc_norm = 1.;
 
+  char lock[50];
+  sprintf(lock, "%s/lock", filename);
+  if (boost::filesystem::exists(string(lock))) {
+    printf("restart file broken, please rerun the whole calculation");
+  }
+
   if(dir == MPS_DIRECTION::Left) {
     // in case of restart
     char name[50];
@@ -159,11 +165,14 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
       //when compressing dimensions will change, so reset:
       mps[i + 1].clear();
       Contract((dtype)1.0,V,shape(1),U,shape(0),(dtype)0.0,mps[i + 1]);
+      ofstream ilock(lock);
+      ilock.close();
       save_site(mps, i, filename);
       mps[i].clear();
       save_site(mps, i+1, filename);
       // log the progress
       ofstream logfile(name, ofstream::app);
+      std::remove(lock);      
       logfile << i+1 << " ";
       logfile.close();
       dtype nrm = sqrt(Dotc(mps[i+1],mps[i+1]));
@@ -216,9 +225,12 @@ typename remove_complex<dtype>::type partial_compress(int L,const MPS_DIRECTION&
       //when compressing dimensions will change, so reset:
       mps[i - 1].clear();
       Contract((dtype)1.0,V,shape(2),U,shape(0),(dtype)0.0,mps[i - 1]);
+      ofstream ilock(lock);
+      ilock.close();
       save_site(mps, i, filename);
       mps[i].clear();
       save_site(mps, i-1, filename);
+      std::remove(lock);
       // log the progress
       ofstream logfile(name, ofstream::app);
       logfile << i-1 << " ";
